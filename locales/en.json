@@ -1,0 +1,73 @@
+{
+  "app": {
+    "name": "Time Window Alarms",
+    "loading": "Loading..."
+  },
+  "tabs": {
+    "alarms": "Alarms",
+    "add": "Add Alarm",
+    "active": "Active"
+  },
+  "alarms": {
+    "title": "Time Window Alarms",
+    "subtitle": "{{count}} active alarms",
+    "empty": "No alarms yet",
+    "emptyDescription": "Tap the + button to create your first time window alarm",
+    "testNotification": "Test Notification"
+  },
+  "addAlarm": {
+    "title": "New Time Window",
+    "subtitle": "Create a recurring alarm for your daily routine",
+    "alarmName": "Alarm Name",
+    "placeholder": "Morning workout, Work break, etc.",
+    "activeTimeWindow": "Active Time Window",
+    "startTime": "Start Time",
+    "endTime": "End Time",
+    "selectStartTime": "Select Start Time",
+    "selectEndTime": "Select End Time",
+    "duration": "Duration: {{duration}}",
+    "howItWorks": "How it works",
+    "info1": "Active daily during your selected time window",
+    "info2": "Persistent notification until marked complete",
+    "info3": "Automatically resets every day",
+    "createAlarm": "Create Alarm",
+    "creating": "Creating...",
+    "success": "Time window alarm created successfully!",
+    "error": "Failed to create alarm. Please try again.",
+    "nameRequired": "Please enter an alarm name",
+    "timeError": "Start time and end time cannot be the same"
+  },
+  "notifications": {
+    "title": "Active Notifications",
+    "subtitle": "{{count}} active notifications",
+    "empty": "No active notifications",
+    "emptyDescription": "When your time window alarms are active, they'll appear here",
+    "markDone": "Done",
+    "startedAt": "Started at {{time}}",
+    "activeUntil": "Active until {{time}}"
+  },
+  "alarmCard": {
+    "disabled": "Disabled",
+    "doneToday": "Done Today",
+    "activeNow": "Active Now",
+    "scheduled": "Scheduled"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "selectLanguage": "Select Language",
+    "english": "English",
+    "turkish": "Türkçe"
+  },
+  "common": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "close": "Close",
+    "done": "Done",
+    "error": "Error",
+    "success": "Success"
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "app": {
+    "name": "Zaman Penceresi Alarmları",
+    "loading": "Yükleniyor..."
+  },
+  "tabs": {
+    "alarms": "Alarmlar",
+    "add": "Alarm Ekle",
+    "active": "Aktif"
+  },
+  "alarms": {
+    "title": "Zaman Penceresi Alarmları",
+    "subtitle": "{{count}} aktif alarm",
+    "empty": "Henüz alarm yok",
+    "emptyDescription": "İlk zaman penceresi alarmınızı oluşturmak için + butonuna dokunun",
+    "testNotification": "Test Bildirimi"
+  },
+  "addAlarm": {
+    "title": "Yeni Zaman Penceresi",
+    "subtitle": "Günlük rutininiz için tekrarlayan alarm oluşturun",
+    "alarmName": "Alarm Adı",
+    "placeholder": "Sabah sporu, İş molası, vb.",
+    "activeTimeWindow": "Aktif Zaman Penceresi",
+    "startTime": "Başlangıç Saati",
+    "endTime": "Bitiş Saati",
+    "selectStartTime": "Başlangıç Saati Seç",
+    "selectEndTime": "Bitiş Saati Seç",
+    "duration": "Süre: {{duration}}",
+    "howItWorks": "Nasıl çalışır",
+    "info1": "Seçtiğiniz zaman penceresinde her gün aktif",
+    "info2": "Tamamlandı olarak işaretlenene kadar kalıcı bildirim",
+    "info3": "Her gün otomatik olarak sıfırlanır",
+    "createAlarm": "Alarm Oluştur",
+    "creating": "Oluşturuluyor...",
+    "success": "Zaman penceresi alarmı başarıyla oluşturuldu!",
+    "error": "Alarm oluşturulamadı. Lütfen tekrar deneyin.",
+    "nameRequired": "Lütfen bir alarm adı girin",
+    "timeError": "Başlangıç ve bitiş saati aynı olamaz"
+  },
+  "notifications": {
+    "title": "Aktif Bildirimler",
+    "subtitle": "{{count}} aktif bildirim",
+    "empty": "Aktif bildirim yok",
+    "emptyDescription": "Zaman penceresi alarmlarınız aktif olduğunda burada görünecek",
+    "markDone": "Tamam",
+    "startedAt": "{{time}} saatinde başladı",
+    "activeUntil": "{{time}} saatine kadar aktif"
+  },
+  "alarmCard": {
+    "disabled": "Devre Dışı",
+    "doneToday": "Bugün Tamam",
+    "activeNow": "Şimdi Aktif",
+    "scheduled": "Zamanlanmış"
+  },
+  "settings": {
+    "title": "Ayarlar",
+    "language": "Dil",
+    "selectLanguage": "Dil Seç",
+    "english": "English",
+    "turkish": "Türkçe"
+  },
+  "common": {
+    "ok": "Tamam",
+    "cancel": "İptal",
+    "save": "Kaydet",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "close": "Kapat",
+    "done": "Tamam",
+    "error": "Hata",
+    "success": "Başarılı"
+  }
+}

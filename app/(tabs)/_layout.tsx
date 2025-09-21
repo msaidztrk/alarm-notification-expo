@@ -1,51 +1,62 @@
+import React from 'react';
+import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Tabs } from 'expo-router';
-import { Bell, Plus, Settings } from 'lucide-react-native';
+import { useTranslation } from '@/services/LanguageProvider';
+import { useTheme } from '@/services/ThemeProvider';
+
+// You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
+function TabBarIcon(props: {
+  name: React.ComponentProps<typeof FontAwesome>['name'];
+  color: string;
+}) {
+  return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
+}
 
 export default function TabLayout() {
+  const { t } = useTranslation();
+  const { theme } = useTheme();
+
   return (
     <Tabs
       screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: '#007AFF',
-        tabBarInactiveTintColor: '#8E8E93',
+        tabBarActiveTintColor: theme.primary,
+        tabBarInactiveTintColor: theme.textSecondary,
         tabBarStyle: {
-          backgroundColor: '#FFFFFF',
-          borderTopColor: '#E5E5EA',
-          borderTopWidth: 0.5,
-          height: 84,
-          paddingBottom: 20,
-          paddingTop: 8,
+          backgroundColor: theme.card,
+          borderTopColor: theme.border,
         },
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '500',
+        headerStyle: {
+          backgroundColor: theme.card,
         },
+        headerTintColor: theme.text,
+        headerShown: false,
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Alerts',
-          tabBarIcon: ({ size, color }) => (
-            <Bell size={size} color={color} />
-          ),
+          title: t('tabs.alarms'),
+          tabBarIcon: ({ color }) => <TabBarIcon name="clock-o" color={color} />,
         }}
       />
       <Tabs.Screen
         name="add"
         options={{
-          title: 'Add Alert',
-          tabBarIcon: ({ size, color }) => (
-            <Plus size={size} color={color} />
-          ),
+          title: t('tabs.add'),
+          tabBarIcon: ({ color }) => <TabBarIcon name="plus" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="notifications"
+        options={{
+          title: t('tabs.notifications'),
+          tabBarIcon: ({ color }) => <TabBarIcon name="bell" color={color} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
-          tabBarIcon: ({ size, color }) => (
-            <Settings size={size} color={color} />
-          ),
+          title: t('tabs.settings'),
+          tabBarIcon: ({ color }) => <TabBarIcon name="cog" color={color} />,
         }}
       />
     </Tabs>

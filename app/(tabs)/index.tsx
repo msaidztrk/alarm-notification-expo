@@ -1,363 +1,132 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React from 'react';
 import {
   View,
   Text,
-  FlatList,
-  TouchableOpacity,
   StyleSheet,
+  FlatList,
   RefreshControl,
-  Alert as AlertDialog,
+  SafeAreaView,
+  TouchableOpacity,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Clock, Check, Pause, Play, Trash2, CreditCard as Edit3, Bell } from 'lucide-react-native';
-import { Alert } from '@/types/Alert';
-import { AlertService } from '@/services/AlertService';
+import { AlarmCard } from '@/components/AlarmCard';
+import { useAlarms } from '@/hooks/useAlarms';
+import { NotificationService } from '@/services/notificationService';
+import { Alarm } from '@/types/alarm';
+import { useTranslation } from '@/services/LanguageProvider';
+import { useTheme } from '@/services/ThemeProvider';
 
-export default function AlertsScreen() {
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
+export default function AlarmsScreen() {
+  const { t } = useTranslation();
+  const { theme } = useTheme();
+  const { alarms, loading, updateAlarm, deleteAlarm, refresh, checkActiveAlarms } = useAlarms();
 
-  const loadAlerts = async () => {
-    try {
-      const allAlerts = await AlertService.getAllAlerts();
-      setAlerts(allAlerts.sort((a, b) => a.time.localeCompare(b.time)));
-    } catch (error) {
-      console.error('Error loading alerts:', error);
-    }
-  };
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await loadAlerts();
-    setRefreshing(false);
-  }, []);
-
+  // Tab'a odaklanıldığında verileri yenile
   useFocusEffect(
-    useCallback(() => {
-      loadAlerts();
-    }, [])
+    React.useCallback(() => {
+      refresh();
+    }, [refresh])
   );
 
-  const handleToggleActive = async (alertId: string) => {
-    try {
-      await AlertService.toggleAlertActive(alertId);
-      await loadAlerts();
-    } catch (error) {
-      console.error('Error toggling alert:', error);
-    }
+  const handleToggleAlarm = async (id: string, isActive: boolean) => {
+    await updateAlarm(id, { isActive });
   };
 
-  const handleMarkDone = async (alertId: string) => {
-    try {
-      await AlertService.markAlertAsDone(alertId);
-      await loadAlerts();
-    } catch (error) {
-      console.error('Error marking alert as done:', error);
-    }
+  const handleDeleteAlarm = async (id: string) => {
+    await deleteAlarm(id);
   };
 
-  const handleDelete = async (alert: Alert) => {
-    AlertDialog.alert(
-      'Delete Alert',
-      `Are you sure you want to delete "${alert.title}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await AlertService.deleteAlert(alert.id);
-              await loadAlerts();
-            } catch (error) {
-              console.error('Error deleting alert:', error);
-            }
-          },
-        },
-      ]
-    );
+  const handleEditAlarm = (alarm: Alarm) => {
+    // For now, we'll implement basic editing by toggling active state
+    // In a full implementation, this would navigate to an edit screen
+    console.log('Edit alarm:', alarm);
   };
 
-  const renderAlertItem = ({ item }: { item: Alert }) => (
-    <View style={[
-      styles.alertCard,
-      item.isDone && styles.doneCard,
-      !item.isActive && styles.inactiveCard
-    ]}>
-      <View style={styles.alertHeader}>
-        <View style={styles.alertInfo}>
-          <Text style={[
-            styles.alertTitle,
-            item.isDone && styles.doneText,
-            !item.isActive && styles.inactiveText
-          ]}>
-            {item.title}
-          </Text>
-          {item.description && (
-            <Text style={[
-              styles.alertDescription,
-              item.isDone && styles.doneText,
-              !item.isActive && styles.inactiveText
-            ]}>
-              {item.description}
-            </Text>
-          )}
-          <View style={styles.timeContainer}>
-            <Clock size={16} color="#8E8E93" />
-            <Text style={styles.timeText}>{item.time}</Text>
-          </View>
-        </View>
-        
-        <View style={styles.statusBadge}>
-          {item.isDone ? (
-            <View style={styles.doneBadge}>
-              <Check size={16} color="#FFFFFF" />
-            </View>
-          ) : item.isActive ? (
-            <View style={styles.activeBadge} />
-          ) : (
-            <View style={styles.pausedBadge} />
-          )}
-        </View>
-      </View>
+  const handleTestNotifications = async () => {
+    console.log('Testing notifications...');
+    // Force check active alarms
+    await checkActiveAlarms();
+    
+        // Also test a direct notification
+    const testAlarm: Alarm = {
+      id: 'test_' + Date.now(),
+      name: 'Test Notification',
+      startTime: '00:00',
+      endTime: '23:59',
+      isActive: true,
+      repeatType: 'daily',
+      notificationInterval: 15,
+      createdAt: Date.now()
+    };
+    
+    await NotificationService.scheduleAlarmNotification(testAlarm, 'test_notification');
+  };
 
-      <View style={styles.alertActions}>
-        {!item.isDone && (
-          <>
-            <TouchableOpacity
-              style={[
-                styles.actionButton,
-                styles.toggleButton,
-                item.isActive ? styles.pauseButton : styles.playButton
-              ]}
-              onPress={() => handleToggleActive(item.id)}
-            >
-              {item.isActive ? (
-                <Pause size={16} color="#FFFFFF" />
-              ) : (
-                <Play size={16} color="#FFFFFF" />
-              )}
-              <Text style={styles.actionButtonText}>
-                {item.isActive ? 'Pause' : 'Resume'}
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.actionButton, styles.doneButton]}
-              onPress={() => handleMarkDone(item.id)}
-            >
-              <Check size={16} color="#FFFFFF" />
-              <Text style={styles.actionButtonText}>Done</Text>
-            </TouchableOpacity>
-          </>
-        )}
-
-        <TouchableOpacity
-          style={[styles.actionButton, styles.deleteButton]}
-          onPress={() => handleDelete(item)}
-        >
-          <Trash2 size={16} color="#FFFFFF" />
-          <Text style={styles.actionButtonText}>Delete</Text>
-        </TouchableOpacity>
-      </View>
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <Text style={[styles.emptyTitle, { color: theme.text }]}>{t('alarms.noAlarms')}</Text>
+      <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+        {t('alarms.addFirstAlarm')}
+      </Text>
     </View>
   );
 
-  const activeAlerts = alerts.filter(alert => !alert.isDone);
-  const completedAlerts = alerts.filter(alert => alert.isDone);
+  const renderAlarmCard = ({ item }: { item: Alarm }) => (
+    <AlarmCard
+      alarm={item}
+      onToggle={handleToggleAlarm}
+      onDelete={handleDeleteAlarm}
+      onEdit={handleEditAlarm}
+    />
+  );
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Alerts</Text>
-        <Text style={styles.headerSubtitle}>
-          {activeAlerts.length} active • {completedAlerts.length} completed
-        </Text>
-      </View>
-
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <FlatList
-        data={alerts}
-        renderItem={renderAlertItem}
-        keyExtractor={item => item.id}
+        data={alarms}
+        renderItem={renderAlarmCard}
+        keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          <RefreshControl 
+            refreshing={loading} 
+            onRefresh={refresh}
+            tintColor={theme.primary}
+            colors={[theme.primary]}
+          />
         }
+        ListEmptyComponent={renderEmptyState}
         showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <Bell size={64} color="#C7C7CC" />
-            <Text style={styles.emptyTitle}>No Alerts Yet</Text>
-            <Text style={styles.emptySubtitle}>
-              Tap the "Add Alert" tab to create your first alert
-            </Text>
-          </View>
-        }
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
-  },
-  header: {
-    padding: 20,
-    paddingTop: 60,
-    backgroundColor: '#FFFFFF',
-    borderBottomColor: '#E5E5EA',
-    borderBottomWidth: 0.5,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1C1C1E',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: '#8E8E93',
-    fontWeight: '500',
   },
   listContainer: {
-    padding: 16,
+    paddingTop: 16,
     paddingBottom: 100,
   },
-  alertCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 12,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  doneCard: {
-    opacity: 0.7,
-    backgroundColor: '#F8F9FA',
-  },
-  inactiveCard: {
-    backgroundColor: '#FAFAFA',
-  },
-  alertHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-  },
-  alertInfo: {
+  emptyState: {
     flex: 1,
-    marginRight: 12,
-  },
-  alertTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1C1C1E',
-    marginBottom: 4,
-  },
-  alertDescription: {
-    fontSize: 14,
-    color: '#8E8E93',
-    marginBottom: 8,
-    lineHeight: 20,
-  },
-  timeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  timeText: {
-    fontSize: 14,
-    color: '#8E8E93',
-    fontWeight: '500',
-  },
-  doneText: {
-    color: '#C7C7CC',
-    textDecorationLine: 'line-through',
-  },
-  inactiveText: {
-    color: '#C7C7CC',
-  },
-  statusBadge: {
-    alignItems: 'center',
     justifyContent: 'center',
-  },
-  activeBadge: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#34C759',
-  },
-  pausedBadge: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#FF9500',
-  },
-  doneBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#34C759',
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  alertActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    gap: 6,
-  },
-  toggleButton: {
-    backgroundColor: '#007AFF',
-  },
-  playButton: {
-    backgroundColor: '#34C759',
-  },
-  pauseButton: {
-    backgroundColor: '#FF9500',
-  },
-  doneButton: {
-    backgroundColor: '#34C759',
-  },
-  deleteButton: {
-    backgroundColor: '#FF3B30',
-  },
-  actionButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 80,
+    paddingHorizontal: 40,
+    marginTop: 100,
   },
   emptyTitle: {
-    fontSize: 22,
-    fontWeight: '600',
-    color: '#1C1C1E',
-    marginTop: 16,
-    marginBottom: 8,
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 12,
+    textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: 16,
-    color: '#8E8E93',
     textAlign: 'center',
     lineHeight: 24,
-    paddingHorizontal: 40,
+    opacity: 0.7,
   },
 });

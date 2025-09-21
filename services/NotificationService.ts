@@ -1,134 +1,278 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
-import { Alert } from '@/types/Alert';
-
-// Configure notification handler
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+import { Alarm } from '@/types/alarm';
 
 export class NotificationService {
-  static async requestPermissions(): Promise<boolean> {
-    try {
-      if (Device.isDevice) {
-        const { status: existingStatus } = await Notifications.getPermissionsAsync();
-        let finalStatus = existingStatus;
-        
-        if (existingStatus !== 'granted') {
-          const { status } = await Notifications.requestPermissionsAsync();
-          finalStatus = status;
-        }
-        
-        if (finalStatus !== 'granted') {
-          return false;
-        }
-        
-        if (Platform.OS === 'android') {
-          await Notifications.setNotificationChannelAsync('alerts', {
-            name: 'Alert Notifications',
-            importance: Notifications.AndroidImportance.HIGH,
-            vibrationPattern: [0, 250, 250, 250],
-            lightColor: '#007AFF',
-            sound: 'default',
-          });
-        }
-        
-        return true;
-      } else {
-        console.log('Must use physical device for Push Notifications');
-        return false;
-      }
-    } catch (error) {
-      console.error('Error requesting notification permissions:', error);
+  static async initialize(): Promise<boolean> {
+    if (Platform.OS === 'web') {
+      return true; // Skip notification setup for web
+    }
+
+    let finalStatus = await Notifications.getPermissionsAsync();
+    
+    if (finalStatus.status !== 'granted') {
+      finalStatus = await Notifications.requestPermissionsAsync();
+    }
+
+    if (finalStatus.status !== 'granted') {
+      console.log('Notification permissions not granted');
       return false;
     }
+
+    if (Platform.OS === 'android') {
+      await Notifications.setNotificationChannelAsync('alarm', {
+        name: 'Alarm notifications',
+        importance: Notifications.AndroidImportance.MAX,
+        vibrationPattern: [0, 250, 250, 250],
+        lightColor: '#007AFF',
+        sound: 'default',
+        enableLights: true,
+        enableVibrate: true,
+        showBadge: true,
+        // Make notifications persistent and non-dismissible
+        bypassDnd: true,
+        lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+      });
+    }
+
+    // Configure notification handler
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+        shouldShowBanner: true,
+        shouldShowList: true,
+      }),
+    });
+
+    // Set up notification categories for actions
+    if (Platform.OS === 'ios') {
+      await Notifications.setNotificationCategoryAsync('ALARM_CATEGORY', [
+        {
+          identifier: 'COMPLETE_ACTION',
+          buttonTitle: 'Mark Complete',
+          options: {
+            isDestructive: false,
+            isAuthenticationRequired: false,
+          },
+        },
+      ]);
+    }
+
+    return true;
   }
 
-  static async scheduleAlertNotification(alert: Alert): Promise<string | null> {
+  static async scheduleAlarmNotification(alarm: Alarm, notificationId: string): Promise<string | null> {
+    if (Platform.OS === 'web') {
+      return null;
+    }
+
     try {
-      const hasPermission = await this.requestPermissions();
-      if (!hasPermission) {
-        throw new Error('Notification permissions not granted');
-      }
-
-      // Cancel existing notification if any
-      await this.cancelAlertNotification(alert.id);
-
-      // Parse time
-      const [hours, minutes] = alert.time.split(':').map(Number);
+      console.log(`Scheduling notification for alarm: ${alarm.name}, ID: ${alarm.id}`);
       
-      // Create trigger for daily notifications
-      const trigger: Notifications.NotificationTriggerInput = {
-        hour: hours,
-        minute: minutes,
-        repeats: true,
+      // First, cancel any existing notifications for this alarm
+      await this.cancelNotificationsForAlarm(alarm.id);
+      
+      const notificationRequest: any = {
+        content: {
+          title: `🔔 ${alarm.name}`,
+          body: `Active until ${alarm.endTime}. Mark as done in the app to dismiss.`,
+          data: { 
+            alarmId: alarm.id, 
+            notificationId,
+            type: 'time_window_alarm',
+            action: 'open_active_tab'
+          },
+          badge: 1,
+          sound: 'default',
+          // Make notification persistent and non-dismissible
+          sticky: true,
+          autoDismiss: false,
+        },
+        trigger: null, // Show immediately
+        identifier: `alarm_${alarm.id}`, // Use consistent identifier based on alarm ID
       };
 
-      const notificationId = await Notifications.scheduleNotificationAsync({
-        identifier: alert.id,
-        content: {
-          title: alert.title,
-          body: alert.description || 'Daily Alert',
-          data: {
-            alertId: alert.id,
-            type: 'alert',
-          },
-          categoryIdentifier: 'alert',
-          sticky: true, // Makes notification persistent on Android
-        },
-        trigger,
-      });
+      // Add platform-specific properties
+      if (Platform.OS === 'ios') {
+        notificationRequest.content.categoryIdentifier = 'ALARM_CATEGORY';
+        // iOS specific persistent settings
+        notificationRequest.content.interruptionLevel = 'timeSensitive';
+      } else if (Platform.OS === 'android') {
+        notificationRequest.content.channelId = 'alarm';
+        // Android specific persistent settings - make it truly non-dismissible
+        notificationRequest.content.priority = 'max';
+        notificationRequest.content.ongoing = true; // Makes notification persistent like a foreground service
+        notificationRequest.content.autoCancel = false; // Prevents auto-cancellation when tapped
+        notificationRequest.content.dismissable = false; // Prevents manual dismissal
+        notificationRequest.content.localOnly = true; // Keeps it local to device
+        notificationRequest.content.timeoutAfter = null; // Never timeout
+        notificationRequest.content.visibility = 'public'; // Always visible
+      }
 
-      return notificationId;
+      const identifier = await Notifications.scheduleNotificationAsync(notificationRequest);
+
+      console.log(`Notification scheduled with identifier: ${identifier}`);
+      return identifier;
     } catch (error) {
       console.error('Error scheduling notification:', error);
       return null;
     }
   }
 
-  static async cancelAlertNotification(alertId: string): Promise<void> {
-    try {
-      await Notifications.cancelScheduledNotificationAsync(alertId);
-    } catch (error) {
-      console.error('Error canceling notification:', error);
+  static async scheduleRepeatingAlarmNotifications(alarm: Alarm): Promise<string[]> {
+    if (Platform.OS === 'web') {
+      return [];
     }
-  }
 
-  static async cancelAllAlertNotifications(): Promise<void> {
     try {
-      await Notifications.cancelAllScheduledNotificationsAsync();
-    } catch (error) {
-      console.error('Error canceling all notifications:', error);
-    }
-  }
+      console.log(`Scheduling repeating notifications for alarm: ${alarm.name} with ${alarm.notificationInterval} minute intervals`);
+      
+      const identifiers: string[] = [];
+      const today = new Date();
+      
+      // Schedule notifications for the next 7 days
+      for (let i = 0; i < 7; i++) {
+        const targetDate = new Date(today);
+        targetDate.setDate(today.getDate() + i);
+        
+        // Parse start and end time
+        const [startHour, startMinute] = alarm.startTime.split(':').map(Number);
+        const [endHour, endMinute] = alarm.endTime.split(':').map(Number);
+        
+        const startTime = new Date(targetDate);
+        startTime.setHours(startHour, startMinute, 0, 0);
+        
+        const endTime = new Date(targetDate);
+        endTime.setHours(endHour, endMinute, 0, 0);
+        
+        // Handle next day end time
+        if (endTime <= startTime) {
+          endTime.setDate(endTime.getDate() + 1);
+        }
+        
+        // Only schedule if start time is in the future
+        if (startTime > new Date()) {
+          // Calculate how many notifications to schedule based on interval
+          const durationMs = endTime.getTime() - startTime.getTime();
+          const intervalMs = alarm.notificationInterval * 60 * 1000; // Convert minutes to milliseconds
+          const notificationCount = Math.floor(durationMs / intervalMs) + 1; // +1 for initial notification
+          
+          // Schedule multiple notifications at intervals
+          for (let j = 0; j < notificationCount; j++) {
+            const notificationTime = new Date(startTime.getTime() + (j * intervalMs));
+            
+            // Don't schedule notifications after end time
+            if (notificationTime > endTime) {
+              break;
+            }
+            
+            const notificationRequest: any = {
+              content: {
+                title: `🔔 ${alarm.name}`,
+                body: `Active until ${alarm.endTime}. Mark as done in the app to dismiss.`,
+                data: { 
+                  alarmId: alarm.id, 
+                  notificationId: `${alarm.id}_${i}_${j}`,
+                  type: 'time_window_alarm',
+                  action: 'open_active_tab'
+                },
+                badge: 1,
+                sound: 'default',
+              },
+              trigger: {
+                type: 'date',
+                date: notificationTime,
+                repeats: false,
+              },
+              identifier: `alarm_${alarm.id}_day_${i}_interval_${j}`,
+            };
 
-  static async setupNotificationCategories(): Promise<void> {
-    try {
-      if (Platform.OS !== 'web') {
-        await Notifications.setNotificationCategoryAsync('alert', [
-          {
-            identifier: 'mark_done',
-            buttonTitle: 'Mark Done',
-            options: {
-              opensAppToForeground: true,
-            },
-          },
-          {
-            identifier: 'snooze',
-            buttonTitle: 'Snooze',
-            options: {
-              opensAppToForeground: false,
-            },
-          },
-        ]);
+            // Add platform-specific properties
+            if (Platform.OS === 'ios') {
+              notificationRequest.content.categoryIdentifier = 'ALARM_CATEGORY';
+              notificationRequest.content.interruptionLevel = 'timeSensitive';
+            } else if (Platform.OS === 'android') {
+              notificationRequest.content.channelId = 'alarm';
+              notificationRequest.content.priority = 'max';
+              notificationRequest.content.ongoing = true;
+              notificationRequest.content.autoCancel = false;
+            }
+
+            const identifier = await Notifications.scheduleNotificationAsync(notificationRequest);
+            identifiers.push(identifier);
+            
+            console.log(`Scheduled notification ${j + 1}/${notificationCount} for ${notificationTime.toLocaleString()}`);
+          }
+        }
       }
+      
+      console.log(`Successfully scheduled ${identifiers.length} notifications for alarm: ${alarm.name}`);
+      return identifiers;
     } catch (error) {
-      console.error('Error setting up notification categories:', error);
+      console.error('Error scheduling repeating alarm notifications:', error);
+      return [];
+    }
+  }
+
+  static async cancelNotificationsForAlarm(alarmId: string): Promise<void> {
+    if (Platform.OS !== 'web') {
+      try {
+        const identifier = `alarm_${alarmId}`;
+        await Notifications.cancelScheduledNotificationAsync(identifier);
+        await Notifications.dismissNotificationAsync(identifier);
+      } catch (error) {
+        console.error('Error canceling notifications for alarm:', error);
+      }
+    }
+  }
+
+  static async cancelNotification(identifier: string): Promise<void> {
+    if (Platform.OS !== 'web' && identifier) {
+      try {
+        await Notifications.cancelScheduledNotificationAsync(identifier);
+        await Notifications.dismissNotificationAsync(identifier);
+      } catch (error) {
+        console.error('Error canceling notification:', error);
+      }
+    }
+  }
+
+  static async clearAllNotifications(): Promise<void> {
+    if (Platform.OS !== 'web') {
+      await Notifications.dismissAllNotificationsAsync();
+      await Notifications.cancelAllScheduledNotificationsAsync();
+    }
+  }
+
+  static async setupNotificationResponseListener(
+    onNotificationResponse: (response: Notifications.NotificationResponse) => void
+  ): Promise<void> {
+    if (Platform.OS !== 'web') {
+      Notifications.addNotificationResponseReceivedListener(onNotificationResponse);
+      
+      // Add notification dismissed listener to recreate dismissed alarm notifications
+      Notifications.addNotificationReceivedListener(async (notification) => {
+        const data = notification.request.content.data as any;
+        if (data?.type === 'time_window_alarm') {
+          console.log('Alarm notification received - ensuring it stays persistent');
+        }
+      });
+    }
+  }
+
+  static async recreateNotificationIfDismissed(alarm: Alarm, notificationId: string): Promise<void> {
+    if (Platform.OS !== 'web') {
+      // Check if notification still exists
+      const presentedNotifications = await Notifications.getPresentedNotificationsAsync();
+      const exists = presentedNotifications.some(n => n.request.identifier === `alarm_${alarm.id}`);
+      
+      if (!exists) {
+        console.log(`Notification for alarm ${alarm.name} was dismissed, recreating...`);
+        await this.scheduleAlarmNotification(alarm, notificationId);
+      }
     }
   }
 }

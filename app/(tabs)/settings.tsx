@@ -2,334 +2,269 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
-  ScrollView,
-  Alert as AlertDialog,
+  SafeAreaView,
+  TouchableOpacity,
+  Modal,
+  FlatList,
+  Alert,
   Switch,
 } from 'react-native';
-import { 
-  Bell, 
-  Trash2, 
-  Shield, 
-  Info,
-  BellRing,
-  Volume2
-} from 'lucide-react-native';
-import { AlertService } from '@/services/AlertService';
-import { NotificationService } from '@/services/NotificationService';
-import * as Notifications from 'expo-notifications';
+import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from '@/services/LanguageProvider';
+import { useTheme } from '@/services/ThemeProvider';
+
+type Language = {
+  code: string;
+  name: string;
+  nativeName: string;
+};
+
+const languages: Language[] = [
+  { code: 'en', name: 'English', nativeName: 'English' },
+  { code: 'tr', name: 'Turkish', nativeName: 'Türkçe' },
+];
 
 export default function SettingsScreen() {
-  const [alertCount, setAlertCount] = useState(0);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const { t, language, setLanguage } = useTranslation();
+  const { isDarkMode, setDarkMode, theme } = useTheme();
+  const [isLanguageModalVisible, setIsLanguageModalVisible] = useState(false);
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
+  const handleLanguageChange = async (languageCode: string) => {
     try {
-      const alerts = await AlertService.getAllAlerts();
-      setAlertCount(alerts.length);
-
-      const { status } = await Notifications.getPermissionsAsync();
-      setNotificationsEnabled(status === 'granted');
-    } catch (error) {
-      console.error('Error loading settings:', error);
-    }
-  };
-
-  const handleRequestNotificationPermissions = async () => {
-    try {
-      const hasPermission = await NotificationService.requestPermissions();
-      setNotificationsEnabled(hasPermission);
+      await setLanguage(languageCode);
+      setIsLanguageModalVisible(false);
       
-      if (hasPermission) {
-        AlertDialog.alert(
-          'Permissions Granted',
-          'Notification permissions have been granted. Your alerts will now work properly.'
-        );
-      } else {
-        AlertDialog.alert(
-          'Permissions Denied',
-          'Please enable notifications in your device settings to receive alerts.'
-        );
-      }
+      Alert.alert(
+        t('common.success'),
+        `Language changed to ${languages.find(lang => lang.code === languageCode)?.nativeName}`,
+        [{ text: t('common.ok') }]
+      );
     } catch (error) {
-      console.error('Error requesting permissions:', error);
+      console.error('Error changing language:', error);
+      Alert.alert(
+        t('common.error'),
+        'Failed to change language. Please try again.',
+        [{ text: t('common.ok') }]
+      );
     }
   };
 
-  const handleClearAllAlerts = () => {
-    AlertDialog.alert(
-      'Clear All Alerts',
-      `Are you sure you want to delete all ${alertCount} alerts? This action cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete All',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const alerts = await AlertService.getAllAlerts();
-              for (const alert of alerts) {
-                await AlertService.deleteAlert(alert.id);
-              }
-              setAlertCount(0);
-              AlertDialog.alert('Success', 'All alerts have been deleted.');
-            } catch (error) {
-              console.error('Error clearing alerts:', error);
-              AlertDialog.alert('Error', 'Failed to delete alerts. Please try again.');
-            }
-          },
-        },
-      ]
-    );
+  const getCurrentLanguageName = () => {
+    const currentLang = languages.find(lang => lang.code === language);
+    return currentLang ? currentLang.nativeName : 'English';
   };
 
-  const handleTestNotification = async () => {
-    try {
-      const hasPermission = await NotificationService.requestPermissions();
-      if (!hasPermission) {
-        AlertDialog.alert('Error', 'Notification permissions are required to test notifications.');
-        return;
-      }
+  const styles = getStyles(theme);
 
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'Test Notification',
-          body: 'This is a test notification from Alert Manager!',
-          data: { type: 'test' },
-        },
-        trigger: { seconds: 1 },
-      });
-
-      AlertDialog.alert('Test Sent', 'A test notification has been sent.');
-    } catch (error) {
-      console.error('Error sending test notification:', error);
-      AlertDialog.alert('Error', 'Failed to send test notification.');
-    }
-  };
-
-  const settingSections = [
-    {
-      title: 'Notifications',
-      items: [
-        {
-          icon: <Bell size={20} color="#007AFF" />,
-          title: 'Notification Permissions',
-          subtitle: notificationsEnabled ? 'Enabled' : 'Disabled',
-          action: 'toggle',
-          value: notificationsEnabled,
-          onPress: handleRequestNotificationPermissions,
-        },
-        {
-          icon: <BellRing size={20} color="#34C759" />,
-          title: 'Test Notification',
-          subtitle: 'Send a test notification',
-          action: 'button',
-          onPress: handleTestNotification,
-        },
-      ],
-    },
-    {
-      title: 'Data Management',
-      items: [
-        {
-          icon: <Trash2 size={20} color="#FF3B30" />,
-          title: 'Clear All Alerts',
-          subtitle: `Delete all ${alertCount} alerts`,
-          action: 'button',
-          onPress: handleClearAllAlerts,
-          disabled: alertCount === 0,
-        },
-      ],
-    },
-    {
-      title: 'About',
-      items: [
-        {
-          icon: <Info size={20} color="#8E8E93" />,
-          title: 'Version',
-          subtitle: '1.0.0',
-          action: 'none',
-        },
-        {
-          icon: <Shield size={20} color="#8E8E93" />,
-          title: 'Privacy',
-          subtitle: 'All data stored locally on your device',
-          action: 'none',
-        },
-      ],
-    },
-  ];
-
-  const renderSettingItem = (item: any) => (
+  const renderLanguageItem = ({ item }: { item: Language }) => (
     <TouchableOpacity
-      key={item.title}
-      style={[styles.settingItem, item.disabled && styles.disabledItem]}
-      onPress={item.onPress}
-      disabled={item.disabled || item.action === 'none'}
+      style={[
+        styles.languageItem,
+        item.code === language && styles.selectedLanguageItem
+      ]}
+      onPress={() => handleLanguageChange(item.code)}
     >
-      <View style={styles.settingIcon}>
-        {item.icon}
-      </View>
-      <View style={styles.settingContent}>
-        <Text style={[styles.settingTitle, item.disabled && styles.disabledText]}>
-          {item.title}
+      <View style={styles.languageItemContent}>
+        <Text style={[
+          styles.languageItemText,
+          item.code === language && styles.selectedLanguageText
+        ]}>
+          {item.nativeName}
         </Text>
-        <Text style={[styles.settingSubtitle, item.disabled && styles.disabledText]}>
-          {item.subtitle}
-        </Text>
+                {item.code === language && (
+          <Ionicons 
+            name="checkmark" 
+            size={20} 
+            color="#007AFF" 
+          />
+        )}
       </View>
-      {item.action === 'toggle' && (
-        <Switch
-          value={item.value}
-          onValueChange={item.onPress}
-          trackColor={{ false: '#E5E5EA', true: '#34C759' }}
-          thumbColor="#FFFFFF"
-        />
-      )}
     </TouchableOpacity>
   );
-
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Settings</Text>
-        <Text style={styles.headerSubtitle}>
-          Manage your alerts and app preferences
-        </Text>
-      </View>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.content}>
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={styles.settingItem}
+            onPress={() => setIsLanguageModalVisible(true)}
+          >
+            <View style={styles.settingItemLeft}>
+              <Ionicons name="language" size={24} color="#666" />
+                            <Text style={styles.settingItemText}>{t('settings.language')}</Text>
+            </View>
+            <View style={styles.settingItemRight}>
+              <Text style={styles.settingItemValue}>{getCurrentLanguageName()}</Text>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
+            </View>
+          </TouchableOpacity>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {settingSections.map((section) => (
-          <View key={section.title} style={styles.section}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
-            <View style={styles.sectionContent}>
-              {section.items.map(renderSettingItem)}
+          <View style={styles.settingItem}>
+            <View style={styles.settingItemLeft}>
+              <Ionicons name="moon" size={24} color="#666" />
+              <Text style={styles.settingItemText}>{t('settings.darkMode')}</Text>
+            </View>
+            <View style={styles.settingItemRight}>
+              <Switch
+                value={isDarkMode}
+                onValueChange={setDarkMode}
+                trackColor={{ false: '#767577', true: '#81b0ff' }}
+                thumbColor={isDarkMode ? '#007AFF' : '#f4f3f4'}
+              />
             </View>
           </View>
-        ))}
-
-        <View style={styles.infoSection}>
-          <View style={styles.infoCard}>
-            <Text style={styles.infoTitle}>How to Use Alert Manager</Text>
-            <Text style={styles.infoText}>
-              1. Create alerts with custom titles and times
-            </Text>
-            <Text style={styles.infoText}>
-              2. Alerts will notify you daily at the specified time
-            </Text>
-            <Text style={styles.infoText}>
-              3. Mark alerts as "done" to dismiss them
-            </Text>
-            <Text style={styles.infoText}>
-              4. Pause and resume alerts as needed
-            </Text>
-          </View>
         </View>
-      </ScrollView>
-    </View>
+      </View>
+
+      {/* Language Selection Modal */}
+      <Modal
+        visible={isLanguageModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setIsLanguageModalVisible(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              onPress={() => setIsLanguageModalVisible(false)}
+              style={styles.modalCloseButton}
+            >
+                            <Text style={styles.modalCloseText}>{t('common.close')}</Text>
+            </TouchableOpacity>
+                        <Text style={styles.modalTitle}>{t('settings.selectLanguage')}</Text>
+            <View style={styles.modalPlaceholder} />
+          </View>
+
+          <FlatList
+            data={languages}
+            renderItem={renderLanguageItem}
+            keyExtractor={(item) => item.code}
+            style={styles.languageList}
+            showsVerticalScrollIndicator={false}
+          />
+        </SafeAreaView>
+      </Modal>
+    </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (theme: any) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
-  },
-  header: {
-    padding: 20,
-    paddingTop: 60,
-    backgroundColor: '#FFFFFF',
-    borderBottomColor: '#E5E5EA',
-    borderBottomWidth: 0.5,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1C1C1E',
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    fontSize: 16,
-    color: '#8E8E93',
-    lineHeight: 22,
+    backgroundColor: theme.background,
   },
   content: {
     flex: 1,
-    padding: 16,
+    paddingTop: 20,
   },
   section: {
-    marginBottom: 32,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1C1C1E',
-    marginBottom: 12,
-    paddingHorizontal: 4,
-  },
-  sectionContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    overflow: 'hidden',
+    backgroundColor: theme.card,
+    marginHorizontal: 20,
+    borderRadius: 12,
+    shadowColor: theme.shadow,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderBottomColor: '#E5E5EA',
-    borderBottomWidth: 0.5,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
   },
-  disabledItem: {
-    opacity: 0.5,
-  },
-  settingIcon: {
-    width: 32,
-    height: 32,
+  settingItemLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-  },
-  settingContent: {
     flex: 1,
   },
-  settingTitle: {
+  settingItemText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#1C1C1E',
-    marginBottom: 2,
+    fontWeight: '500',
+    color: theme.text,
+    marginLeft: 12,
   },
-  settingSubtitle: {
-    fontSize: 14,
-    color: '#8E8E93',
+  settingItemRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  disabledText: {
-    color: '#C7C7CC',
+  settingItemValue: {
+    fontSize: 16,
+    color: theme.textSecondary,
+    marginRight: 8,
   },
-  infoSection: {
-    marginBottom: 32,
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#f8f9fa',
   },
-  infoCard: {
-    backgroundColor: '#FFFFFF',
-    padding: 20,
-    borderRadius: 16,
-    borderLeftColor: '#007AFF',
-    borderLeftWidth: 4,
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e9ecef',
   },
-  infoTitle: {
+  modalCloseButton: {
+    padding: 4,
+  },
+  modalCloseText: {
+    fontSize: 16,
+    color: '#007AFF',
+    fontWeight: '500',
+  },
+  modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1C1C1E',
-    marginBottom: 16,
+    color: '#2c3e50',
   },
-  infoText: {
-    fontSize: 14,
-    color: '#1C1C1E',
-    lineHeight: 20,
+  modalPlaceholder: {
+    width: 50,
+  },
+  languageList: {
+    flex: 1,
+    paddingTop: 20,
+  },
+  languageItem: {
+    backgroundColor: '#fff',
+    marginHorizontal: 20,
     marginBottom: 8,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  selectedLanguageItem: {
+    backgroundColor: '#f0f8ff',
+    borderWidth: 1,
+    borderColor: '#007AFF',
+  },
+  languageItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  languageItemText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#2c3e50',
+  },
+  selectedLanguageText: {
+    color: '#007AFF',
+    fontWeight: '600',
   },
 });
