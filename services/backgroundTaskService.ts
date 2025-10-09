@@ -3,7 +3,7 @@ import * as BackgroundFetch from 'expo-background-fetch';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { AlarmService } from './alarmService';
-import { NotificationService } from './notificationService';
+import { NotificationService } from './NotificationService';
 
 const BACKGROUND_ALARM_TASK = 'background-alarm-check';
 
@@ -34,7 +34,7 @@ TaskManager.defineTask(BACKGROUND_ALARM_TASK, async () => {
         continue;
       }
       
-      const isInWindow = AlarmService.isTimeInWindow(currentTime, alarm.startTime, alarm.endTime);
+      const isInWindow = AlarmService.isAlarmInAnyTimeWindow(alarm, currentTime);
       const existingNotification = currentActiveNotifications.find(n => 
         n.alarmId === alarm.id && n.isActive
       );

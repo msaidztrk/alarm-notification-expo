@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { AlarmService } from '@/services/alarmService';
-import { NotificationService } from '@/services/notificationService';
+import { NotificationService } from '@/services/NotificationService';
 import { Alarm, AlarmNotification } from '@/types/alarm';
 
 export function useAlarms() {
@@ -10,6 +10,7 @@ export function useAlarms() {
   const [activeNotifications, setActiveNotifications] = useState<AlarmNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const loadAlarmsRef = useRef<(() => Promise<void>) | null>(null);
+  const initializedRef = useRef(false);
 
   // Handle notification responses (when user taps notification)
   useEffect(() => {
@@ -34,9 +35,13 @@ export function useAlarms() {
 
   const loadAlarms = useCallback(async () => {
     try {
-      // Initialize clean state on first load
-      if (loading) {
+      setLoading(true);
+      
+      // Only initialize clean state once on app launch
+      if (!initializedRef.current) {
+        console.log('First load - running initialization...');
         await AlarmService.initializeCleanState();
+        initializedRef.current = true;
       }
       
       const loadedAlarms = await AlarmService.getAlarms();
@@ -48,7 +53,7 @@ export function useAlarms() {
     } finally {
       setLoading(false);
     }
-  }, [loading]);
+  }, []); // Remove loading dependency to prevent loops
 
   // Store loadAlarms function in ref for use in checkActiveAlarms
   loadAlarmsRef.current = loadAlarms;
@@ -110,7 +115,7 @@ export function useAlarms() {
           continue;
         }
         
-        const isInWindow = AlarmService.isTimeInWindow(currentTime, alarm.startTime, alarm.endTime);
+        const isInWindow = AlarmService.isAlarmInAnyTimeWindow(alarm, currentTime);
         const existingNotification = currentActiveNotifications.find(n => 
           n.alarmId === alarm.id && n.isActive
         );

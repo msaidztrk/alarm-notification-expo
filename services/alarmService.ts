@@ -1,30 +1,29 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { Alarm, AlarmNotification } from '@/types/alarm';
-import { NotificationService } from './notificationService';
+import { NotificationService } from './NotificationService';
 
 const ALARMS_STORAGE_KEY = 'time_window_alarms';
 const NOTIFICATIONS_STORAGE_KEY = 'alarm_notifications';
 
+// In-memory cache for faster reads
+let alarmsCache: Alarm[] | null = null;
+let alarmsCacheTimestamp: number = 0;
+const CACHE_TTL = 5000; // 5 seconds cache
+
 export class AlarmService {
   static async initializeCleanState(): Promise<void> {
-    // Clear all existing notifications to start fresh
-    await NotificationService.clearAllNotifications();
+    console.log('Initializing alarm service...');
     
-    // Mark all stored notifications as expired to prevent duplicates
-    const notifications = await this.getAllNotifications();
-    const cleanedNotifications = notifications.map(n => ({
-      ...n,
-      isActive: false,
-      expiredAt: n.expiredAt || Date.now()
-    }));
-    await this.saveNotifications(cleanedNotifications);
+    // Migration happens automatically in getAlarms() now - no need to call separately
     
-    // Force cleanup of any notifications outside time windows
+    // Just load alarms to trigger any needed migration
+    await this.getAlarms();
+    
+    // Lightweight cleanup - only expire out-of-window notifications
     await this.cleanupOutOfWindowNotifications();
     
-    // Reschedule all active alarms for background operation
-    await this.rescheduleAllAlarms();
+    console.log('Alarm service initialized');
   }
 
   static async cleanupOutOfWindowNotifications(): Promise<void> {
@@ -35,7 +34,7 @@ export class AlarmService {
       
       for (const notification of activeNotifications) {
         const alarm = alarms.find(a => a.id === notification.alarmId);
-        if (alarm && !this.isTimeInWindow(currentTime, alarm.startTime, alarm.endTime)) {
+        if (alarm && !this.isAlarmInAnyTimeWindow(alarm, currentTime)) {
           console.log(`Cleaning up out-of-window notification for ${alarm.name}`);
           await this.expireNotification(notification.id);
         }
@@ -64,8 +63,41 @@ export class AlarmService {
 
   static async getAlarms(): Promise<Alarm[]> {
     try {
+      // Return from cache if fresh
+      const now = Date.now();
+      if (alarmsCache && (now - alarmsCacheTimestamp) < CACHE_TTL) {
+        return alarmsCache;
+      }
+      
       const data = await AsyncStorage.getItem(ALARMS_STORAGE_KEY);
-      return data ? JSON.parse(data) : [];
+      const alarms = data ? JSON.parse(data) : [];
+      
+      // Auto-migrate old alarms on read (lightweight - only in memory)
+      let needsSave = false;
+      const migratedAlarms = alarms.map((alarm: Alarm) => {
+        // If alarm doesn't have timeWindows but has startTime and endTime, auto-migrate it
+        if ((!alarm.timeWindows || alarm.timeWindows.length === 0) && alarm.startTime && alarm.endTime) {
+          needsSave = true;
+          return {
+            ...alarm,
+            timeWindows: [{ id: 'default', startTime: alarm.startTime, endTime: alarm.endTime }]
+          };
+        }
+        return alarm;
+      });
+      
+      // Save migrated alarms asynchronously in background (don't wait)
+      if (needsSave) {
+        this.saveAlarms(migratedAlarms).catch(err => 
+          console.error('Error saving migrated alarms:', err)
+        );
+      }
+      
+      // Update cache
+      alarmsCache = migratedAlarms;
+      alarmsCacheTimestamp = now;
+      
+      return migratedAlarms;
     } catch (error) {
       console.error('Error getting alarms:', error);
       return [];
@@ -75,6 +107,9 @@ export class AlarmService {
   static async saveAlarms(alarms: Alarm[]): Promise<void> {
     try {
       await AsyncStorage.setItem(ALARMS_STORAGE_KEY, JSON.stringify(alarms));
+      // Invalidate cache
+      alarmsCache = alarms;
+      alarmsCacheTimestamp = Date.now();
     } catch (error) {
       console.error('Error saving alarms:', error);
     }
@@ -334,6 +369,30 @@ export class AlarmService {
       console.log(`Normal window: ${result}`);
       return result;
     }
+  }
+
+  static isAlarmInAnyTimeWindow(alarm: Alarm, currentTime: string): boolean {
+    // Ensure alarm has valid properties
+    if (!alarm) {
+      return false;
+    }
+    
+    // Support multiple time windows or fall back to single window for backward compatibility
+    const timeWindows = alarm.timeWindows && alarm.timeWindows.length > 0 
+      ? alarm.timeWindows 
+      : alarm.startTime && alarm.endTime 
+        ? [{ id: 'default', startTime: alarm.startTime, endTime: alarm.endTime }]
+        : [];
+    
+    // If no time windows, return false
+    if (timeWindows.length === 0) {
+      return false;
+    }
+    
+    // Check if current time is in any of the time windows
+    return timeWindows.some(window => 
+      this.isTimeInWindow(currentTime, window.startTime, window.endTime)
+    );
   }
 
   static getCurrentTime(): string {

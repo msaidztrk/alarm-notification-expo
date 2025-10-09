@@ -1,8 +1,15 @@
+export interface TimeWindow {
+  id: string;
+  startTime: string; // HH:MM format
+  endTime: string; // HH:MM format
+}
+
 export interface Alarm {
   id: string;
   name: string;
-  startTime: string; // HH:MM format
-  endTime: string; // HH:MM format
+  startTime: string; // HH:MM format (backward compatibility - first time window)
+  endTime: string; // HH:MM format (backward compatibility - first time window)
+  timeWindows?: TimeWindow[]; // Multiple time windows support
   isActive: boolean;
   repeatType: 'daily' | 'once'; // Tekrar türü eklendi
   notificationInterval: 5 | 10 | 15 | 30 | 60; // Dakika cinsinden notification aralığı (60 = 1 saat)

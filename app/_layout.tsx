@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
-import { NotificationService } from '@/services/notificationService';
+import { NotificationService } from '@/services/NotificationService';
 import { BackgroundTaskService } from '@/services/backgroundTaskService';
 import { AlarmService } from '@/services/alarmService';
 import { NavigationService } from '@/services/navigationService';

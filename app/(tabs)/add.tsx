@@ -15,21 +15,23 @@ import {
 import { useFocusEffect } from '@react-navigation/native';
 import { TimePickerModal } from '@/components/TimePickerModal';
 import { useAlarms } from '@/hooks/useAlarms';
-import { Clock, Plus, AlarmClock, Info, ChevronRight, Bell, Calendar } from 'lucide-react-native';
+import { Clock, Plus, AlarmClock, Info, ChevronRight, Bell, Calendar, Trash2, X } from 'lucide-react-native';
 import { useTranslation } from '@/services/LanguageProvider';
 import { useTheme } from '@/services/ThemeProvider';
+import { TimeWindow } from '@/types/alarm';
 
 export default function AddAlarmScreen() {
   const { t } = useTranslation();
   const { theme } = useTheme();
   const { addAlarm } = useAlarms();
   const [name, setName] = useState('');
-  const [startTime, setStartTime] = useState('09:00');
-  const [endTime, setEndTime] = useState('17:00');
+  const [timeWindows, setTimeWindows] = useState<TimeWindow[]>([
+    { id: '1', startTime: '09:00', endTime: '17:00' }
+  ]);
   const [repeatType, setRepeatType] = useState<'daily' | 'once'>('daily');
   const [notificationInterval, setNotificationInterval] = useState<5 | 10 | 15 | 30 | 60>(15);
-  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
-  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [editingTimeWindow, setEditingTimeWindow] = useState<{ windowId: string; type: 'start' | 'end' } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isNameFocused, setIsNameFocused] = useState(false);
 
@@ -37,14 +39,49 @@ export default function AddAlarmScreen() {
   useFocusEffect(
     React.useCallback(() => {
       setName('');
-      setStartTime('09:00');
-      setEndTime('17:00');
+      setTimeWindows([{ id: '1', startTime: '09:00', endTime: '17:00' }]);
       setRepeatType('daily');
       setNotificationInterval(15);
       setIsSubmitting(false);
       setIsNameFocused(false);
     }, [])
   );
+
+  const addTimeWindow = () => {
+    const newId = Date.now().toString();
+    setTimeWindows([...timeWindows, { id: newId, startTime: '09:00', endTime: '17:00' }]);
+  };
+
+  const removeTimeWindow = (id: string) => {
+    if (timeWindows.length === 1) {
+      Alert.alert(t('common.error'), t('addAlarm.atLeastOneTimeWindow'));
+      return;
+    }
+    setTimeWindows(timeWindows.filter(window => window.id !== id));
+  };
+
+  const updateTimeWindow = (id: string, field: 'startTime' | 'endTime', value: string) => {
+    setTimeWindows(timeWindows.map(window => 
+      window.id === id ? { ...window, [field]: value } : window
+    ));
+  };
+
+  const openTimePicker = (windowId: string, type: 'start' | 'end') => {
+    setEditingTimeWindow({ windowId, type });
+    setShowTimePicker(true);
+  };
+
+  const handleTimeSelect = (time: string) => {
+    if (editingTimeWindow) {
+      updateTimeWindow(
+        editingTimeWindow.windowId, 
+        editingTimeWindow.type === 'start' ? 'startTime' : 'endTime', 
+        time
+      );
+    }
+    setShowTimePicker(false);
+    setEditingTimeWindow(null);
+  };
 
   const calculateDuration = (start: string, end: string) => {
     const [startHour, startMinute] = start.split(':').map(Number);
@@ -77,27 +114,33 @@ export default function AddAlarmScreen() {
       return;
     }
 
-    if (startTime === endTime) {
-      Alert.alert(t('common.error'), t('addAlarm.startEndTimeSame'));
-      return;
+    // Validate all time windows
+    for (const window of timeWindows) {
+      if (window.startTime === window.endTime) {
+        Alert.alert(t('common.error'), t('addAlarm.startEndTimeSame'));
+        return;
+      }
     }
 
     setIsSubmitting(true);
 
     try {
+      // Use first time window for backward compatibility
+      const firstWindow = timeWindows[0];
+      
       await addAlarm({
         name: name.trim(),
-        startTime,
-        endTime,
-        isActive: true, // Her alarm otomatik olarak aktif
-        repeatType, // Tekrar türü eklendi
-        notificationInterval, // Notification aralığı eklendi
+        startTime: firstWindow.startTime,
+        endTime: firstWindow.endTime,
+        timeWindows: timeWindows,
+        isActive: true,
+        repeatType,
+        notificationInterval,
       });
 
       // Reset form
       setName('');
-      setStartTime('09:00');
-      setEndTime('17:00');
+      setTimeWindows([{ id: '1', startTime: '09:00', endTime: '17:00' }]);
       setRepeatType('daily');
       setNotificationInterval(15);
 
@@ -360,6 +403,86 @@ export default function AddAlarmScreen() {
     createButtonTextDisabled: {
       color: theme.textSecondary,
     },
+    sectionHeaderRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    addTimeWindowButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      backgroundColor: theme.primary + '15',
+      borderRadius: 8,
+      gap: 4,
+    },
+    addTimeWindowText: {
+      color: theme.primary,
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    timeWindowCard: {
+      backgroundColor: theme.card,
+      borderRadius: 16,
+      padding: 16,
+      marginBottom: 12,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+      elevation: 3,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    timeWindowHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 12,
+    },
+    timeWindowTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    removeTimeWindowButton: {
+      padding: 4,
+    },
+    timeWindowTimes: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 8,
+    },
+    timeWindowTimeSection: {
+      flex: 1,
+    },
+    timeWindowTimeLabel: {
+      fontSize: 12,
+      color: theme.textSecondary,
+      marginBottom: 6,
+    },
+    timeWindowTimeButton: {
+      backgroundColor: theme.surface,
+      borderRadius: 12,
+      padding: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      borderWidth: 1,
+      borderColor: theme.border,
+    },
+    timeWindowTimeValue: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: theme.text,
+    },
+    timeWindowSeparator: {
+      paddingTop: 20,
+    },
   });
 
   return (
@@ -390,26 +513,70 @@ export default function AddAlarmScreen() {
               </View>
             </View>
 
-            {/* Start Time Section */}
+            {/* Time Windows Section */}
             <View style={styles.section}>
-              <Text style={styles.sectionLabel}>{t('addAlarm.startTime')}</Text>
-              <TouchableOpacity
-                style={styles.timeCard}
-                onPress={() => setShowStartTimePicker(true)}
-              >
-                <Text style={styles.timeText}>{startTime}</Text>
-              </TouchableOpacity>
-            </View>
+              <View style={styles.sectionHeaderRow}>
+                <Text style={styles.sectionLabel}>{t('addAlarm.timeWindows')}</Text>
+                <TouchableOpacity 
+                  style={styles.addTimeWindowButton}
+                  onPress={addTimeWindow}
+                >
+                  <Plus size={18} color={theme.primary} />
+                  <Text style={styles.addTimeWindowText}>{t('addAlarm.addTimeWindow')}</Text>
+                </TouchableOpacity>
+              </View>
 
-            {/* End Time Section */}
-            <View style={styles.section}>
-              <Text style={styles.sectionLabel}>{t('addAlarm.endTime')}</Text>
-              <TouchableOpacity
-                style={styles.timeCard}
-                onPress={() => setShowEndTimePicker(true)}
-              >
-                <Text style={styles.timeText}>{endTime}</Text>
-              </TouchableOpacity>
+              {timeWindows.map((window, index) => (
+                <View key={window.id} style={styles.timeWindowCard}>
+                  <View style={styles.timeWindowHeader}>
+                    <Text style={styles.timeWindowTitle}>
+                      {t('addAlarm.timeWindow')} {index + 1}
+                    </Text>
+                    {timeWindows.length > 1 && (
+                      <TouchableOpacity
+                        onPress={() => removeTimeWindow(window.id)}
+                        style={styles.removeTimeWindowButton}
+                      >
+                        <Trash2 size={18} color="#ef4444" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  <View style={styles.timeWindowTimes}>
+                    <View style={styles.timeWindowTimeSection}>
+                      <Text style={styles.timeWindowTimeLabel}>{t('addAlarm.startTime')}</Text>
+                      <TouchableOpacity
+                        style={styles.timeWindowTimeButton}
+                        onPress={() => openTimePicker(window.id, 'start')}
+                      >
+                        <Clock size={16} color={theme.primary} />
+                        <Text style={styles.timeWindowTimeValue}>{window.startTime}</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    <View style={styles.timeWindowSeparator}>
+                      <ChevronRight size={20} color={theme.textSecondary} />
+                    </View>
+
+                    <View style={styles.timeWindowTimeSection}>
+                      <Text style={styles.timeWindowTimeLabel}>{t('addAlarm.endTime')}</Text>
+                      <TouchableOpacity
+                        style={styles.timeWindowTimeButton}
+                        onPress={() => openTimePicker(window.id, 'end')}
+                      >
+                        <Clock size={16} color={theme.primary} />
+                        <Text style={styles.timeWindowTimeValue}>{window.endTime}</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <View style={styles.durationDisplay}>
+                    <Text style={styles.durationText}>
+                      {t('addAlarm.duration')}: {calculateDuration(window.startTime, window.endTime)}
+                    </Text>
+                  </View>
+                </View>
+              ))}
             </View>
 
             {/* Repeat Section */}
@@ -556,19 +723,24 @@ export default function AddAlarmScreen() {
       </KeyboardAvoidingView>
 
       <TimePickerModal
-        isVisible={showStartTimePicker}
-        onClose={() => setShowStartTimePicker(false)}
-        onTimeSelect={setStartTime}
-        initialTime={startTime}
-        title={t('addAlarm.selectStartTime')}
-      />
-
-      <TimePickerModal
-        isVisible={showEndTimePicker}
-        onClose={() => setShowEndTimePicker(false)}
-        onTimeSelect={setEndTime}
-        initialTime={endTime}
-        title={t('addAlarm.selectEndTime')}
+        isVisible={showTimePicker}
+        onClose={() => {
+          setShowTimePicker(false);
+          setEditingTimeWindow(null);
+        }}
+        onTimeSelect={handleTimeSelect}
+        initialTime={
+          editingTimeWindow 
+            ? timeWindows.find(w => w.id === editingTimeWindow.windowId)?.[
+                editingTimeWindow.type === 'start' ? 'startTime' : 'endTime'
+              ] || '09:00'
+            : '09:00'
+        }
+        title={
+          editingTimeWindow?.type === 'start' 
+            ? t('addAlarm.selectStartTime') 
+            : t('addAlarm.selectEndTime')
+        }
       />
     </SafeAreaView>
   );

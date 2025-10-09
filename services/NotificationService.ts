@@ -133,78 +133,97 @@ export class NotificationService {
       const identifiers: string[] = [];
       const today = new Date();
       
-      // Schedule notifications for the next 7 days
+      // Get time windows (use new array or fall back to single window for backward compatibility)
+      const timeWindows = alarm.timeWindows && alarm.timeWindows.length > 0 
+        ? alarm.timeWindows 
+        : alarm.startTime && alarm.endTime
+          ? [{ id: 'default', startTime: alarm.startTime, endTime: alarm.endTime }]
+          : [];
+      
+      // If no time windows, return empty array
+      if (timeWindows.length === 0) {
+        console.warn(`No time windows found for alarm: ${alarm.name}`);
+        return [];
+      }
+      
+      // Schedule notifications for each time window for the next 7 days
       for (let i = 0; i < 7; i++) {
         const targetDate = new Date(today);
         targetDate.setDate(today.getDate() + i);
         
-        // Parse start and end time
-        const [startHour, startMinute] = alarm.startTime.split(':').map(Number);
-        const [endHour, endMinute] = alarm.endTime.split(':').map(Number);
-        
-        const startTime = new Date(targetDate);
-        startTime.setHours(startHour, startMinute, 0, 0);
-        
-        const endTime = new Date(targetDate);
-        endTime.setHours(endHour, endMinute, 0, 0);
-        
-        // Handle next day end time
-        if (endTime <= startTime) {
-          endTime.setDate(endTime.getDate() + 1);
-        }
-        
-        // Only schedule if start time is in the future
-        if (startTime > new Date()) {
-          // Calculate how many notifications to schedule based on interval
-          const durationMs = endTime.getTime() - startTime.getTime();
-          const intervalMs = alarm.notificationInterval * 60 * 1000; // Convert minutes to milliseconds
-          const notificationCount = Math.floor(durationMs / intervalMs) + 1; // +1 for initial notification
+        // Process each time window
+        for (let windowIndex = 0; windowIndex < timeWindows.length; windowIndex++) {
+          const window = timeWindows[windowIndex];
           
-          // Schedule multiple notifications at intervals
-          for (let j = 0; j < notificationCount; j++) {
-            const notificationTime = new Date(startTime.getTime() + (j * intervalMs));
+          // Parse start and end time
+          const [startHour, startMinute] = window.startTime.split(':').map(Number);
+          const [endHour, endMinute] = window.endTime.split(':').map(Number);
+          
+          const startTime = new Date(targetDate);
+          startTime.setHours(startHour, startMinute, 0, 0);
+          
+          const endTime = new Date(targetDate);
+          endTime.setHours(endHour, endMinute, 0, 0);
+          
+          // Handle next day end time
+          if (endTime <= startTime) {
+            endTime.setDate(endTime.getDate() + 1);
+          }
+          
+          // Only schedule if start time is in the future
+          if (startTime > new Date()) {
+            // Calculate how many notifications to schedule based on interval
+            const durationMs = endTime.getTime() - startTime.getTime();
+            const intervalMs = alarm.notificationInterval * 60 * 1000; // Convert minutes to milliseconds
+            const notificationCount = Math.floor(durationMs / intervalMs) + 1; // +1 for initial notification
             
-            // Don't schedule notifications after end time
-            if (notificationTime > endTime) {
-              break;
-            }
-            
-            const notificationRequest: any = {
-              content: {
-                title: `🔔 ${alarm.name}`,
-                body: `Active until ${alarm.endTime}. Mark as done in the app to dismiss.`,
-                data: { 
-                  alarmId: alarm.id, 
-                  notificationId: `${alarm.id}_${i}_${j}`,
-                  type: 'time_window_alarm',
-                  action: 'open_active_tab'
+            // Schedule multiple notifications at intervals
+            for (let j = 0; j < notificationCount; j++) {
+              const notificationTime = new Date(startTime.getTime() + (j * intervalMs));
+              
+              // Don't schedule notifications after end time
+              if (notificationTime > endTime) {
+                break;
+              }
+              
+              const notificationRequest: any = {
+                content: {
+                  title: `🔔 ${alarm.name}`,
+                  body: `Active until ${window.endTime}. Mark as done in the app to dismiss.`,
+                  data: { 
+                    alarmId: alarm.id, 
+                    notificationId: `${alarm.id}_${i}_${windowIndex}_${j}`,
+                    type: 'time_window_alarm',
+                    action: 'open_active_tab',
+                    windowIndex: windowIndex
+                  },
+                  badge: 1,
+                  sound: 'default',
                 },
-                badge: 1,
-                sound: 'default',
-              },
-              trigger: {
-                type: 'date',
-                date: notificationTime,
-                repeats: false,
-              },
-              identifier: `alarm_${alarm.id}_day_${i}_interval_${j}`,
-            };
+                trigger: {
+                  type: 'date',
+                  date: notificationTime,
+                  repeats: false,
+                },
+                identifier: `alarm_${alarm.id}_day_${i}_window_${windowIndex}_interval_${j}`,
+              };
 
-            // Add platform-specific properties
-            if (Platform.OS === 'ios') {
-              notificationRequest.content.categoryIdentifier = 'ALARM_CATEGORY';
-              notificationRequest.content.interruptionLevel = 'timeSensitive';
-            } else if (Platform.OS === 'android') {
-              notificationRequest.content.channelId = 'alarm';
-              notificationRequest.content.priority = 'max';
-              notificationRequest.content.ongoing = true;
-              notificationRequest.content.autoCancel = false;
+              // Add platform-specific properties
+              if (Platform.OS === 'ios') {
+                notificationRequest.content.categoryIdentifier = 'ALARM_CATEGORY';
+                notificationRequest.content.interruptionLevel = 'timeSensitive';
+              } else if (Platform.OS === 'android') {
+                notificationRequest.content.channelId = 'alarm';
+                notificationRequest.content.priority = 'max';
+                notificationRequest.content.ongoing = true;
+                notificationRequest.content.autoCancel = false;
+              }
+
+              const identifier = await Notifications.scheduleNotificationAsync(notificationRequest);
+              identifiers.push(identifier);
+              
+              console.log(`Scheduled notification ${j + 1}/${notificationCount} for ${notificationTime.toLocaleString()}`);
             }
-
-            const identifier = await Notifications.scheduleNotificationAsync(notificationRequest);
-            identifiers.push(identifier);
-            
-            console.log(`Scheduled notification ${j + 1}/${notificationCount} for ${notificationTime.toLocaleString()}`);
           }
         }
       }

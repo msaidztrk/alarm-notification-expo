@@ -23,11 +23,7 @@ export function AlarmCard({ alarm, onToggle, onDelete, onEdit }: AlarmCardProps)
   const { t } = useTranslation();
   const { theme } = useTheme();
   const currentTime = AlarmService.getCurrentTime();
-  const isCurrentlyActive = AlarmService.isTimeInWindow(
-    currentTime,
-    alarm.startTime,
-    alarm.endTime
-  );
+  const isCurrentlyActive = AlarmService.isAlarmInAnyTimeWindow(alarm, currentTime);
 
   const getStatusColor = () => {
     return alarm.isActive ? '#34C759' : '#8A8A8E';
@@ -42,6 +38,24 @@ export function AlarmCard({ alarm, onToggle, onDelete, onEdit }: AlarmCardProps)
     return 'Every Day'; // You can customize this based on your alarm repeat logic
   };
 
+  const getTimeWindows = () => {
+    // Ensure alarm has valid properties
+    if (!alarm) {
+      return [{ id: 'default', startTime: '09:00', endTime: '17:00' }];
+    }
+    
+    // If timeWindows exist and not empty, use them
+    if (alarm.timeWindows && alarm.timeWindows.length > 0) {
+      return alarm.timeWindows;
+    }
+    
+    // Fallback to single window with alarm times (with safety checks)
+    const startTime = alarm.startTime || '09:00';
+    const endTime = alarm.endTime || '17:00';
+    
+    return [{ id: 'default', startTime, endTime }];
+  };
+
   return (
     <TouchableOpacity
       style={[
@@ -54,27 +68,37 @@ export function AlarmCard({ alarm, onToggle, onDelete, onEdit }: AlarmCardProps)
     >
       {/* Main content */}
       <View style={styles.mainContent}>
-        <View style={styles.timeSection}>
-          <View style={styles.startTimeContainer}>
-            <Text style={[styles.timeText, { color: theme.text }]}>
-              {alarm.startTime}
-            </Text>
-            <Text style={[styles.timeLabel, { color: theme.textSecondary }]}>
-              START
-            </Text>
-          </View>
-          
-          <Text style={[styles.timeSeparator, { color: theme.textSecondary }]}>
-            -
-          </Text>
-          
-          <View style={styles.endTimeContainer}>
-            <Text style={[styles.timeText, { color: theme.text }]}>
-              {alarm.endTime}
-            </Text>
-            <Text style={[styles.timeLabel, { color: theme.textSecondary }]}>
-              END
-            </Text>
+        <View style={styles.leftContent}>
+          <View style={styles.timeWindowsContainer}>
+            {getTimeWindows().map((window, index) => (
+              <View key={window.id} style={styles.timeSection}>
+                <View style={styles.startTimeContainer}>
+                  <Text style={[styles.timeText, { color: theme.text }]}>
+                    {window.startTime}
+                  </Text>
+                  {index === 0 && (
+                    <Text style={[styles.timeLabel, { color: theme.textSecondary }]}>
+                      START
+                    </Text>
+                  )}
+                </View>
+                
+                <Text style={[styles.timeSeparator, { color: theme.textSecondary }]}>
+                  -
+                </Text>
+                
+                <View style={styles.endTimeContainer}>
+                  <Text style={[styles.timeText, { color: theme.text }]}>
+                    {window.endTime}
+                  </Text>
+                  {index === 0 && (
+                    <Text style={[styles.timeLabel, { color: theme.textSecondary }]}>
+                      END
+                    </Text>
+                  )}
+                </View>
+              </View>
+            ))}
           </View>
         </View>
         
@@ -123,11 +147,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 16,
   },
-  timeSection: {
+  leftContent: {
     flex: 1,
+  },
+  timeWindowsContainer: {
+    gap: 8,
+  },
+  timeSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 12,
   },
   startTimeContainer: {
     alignItems: 'center',
