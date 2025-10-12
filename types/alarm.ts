@@ -11,7 +11,8 @@ export interface Alarm {
   endTime: string; // HH:MM format (backward compatibility - first time window)
   timeWindows?: TimeWindow[]; // Multiple time windows support
   isActive: boolean;
-  repeatType: 'daily' | 'once'; // Tekrar türü eklendi
+  repeatType: 'daily' | 'once' | 'weekly'; // Tekrar türü - weekly ekledik
+  selectedDays?: number[]; // 0=Pazar, 1=Pazartesi, 2=Salı, ..., 6=Cumartesi
   notificationInterval: 5 | 10 | 15 | 30 | 60; // Dakika cinsinden notification aralığı (60 = 1 saat)
   createdAt: number;
   completedToday?: boolean;

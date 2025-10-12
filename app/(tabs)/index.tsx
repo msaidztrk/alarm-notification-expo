@@ -7,6 +7,8 @@ import {
   RefreshControl,
   SafeAreaView,
   TouchableOpacity,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { AlarmCard } from '@/components/AlarmCard';
@@ -81,7 +83,13 @@ export default function AlarmsScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+    <SafeAreaView style={[
+      styles.container, 
+      { 
+        backgroundColor: theme.background,
+        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+      }
+    ]}>
       <FlatList
         data={alarms}
         renderItem={renderAlarmCard}

@@ -34,8 +34,46 @@ export function AlarmCard({ alarm, onToggle, onDelete, onEdit }: AlarmCardProps)
   };
 
   const getRepeatText = () => {
-    // Simple repeat text based on your alarm data structure
-    return 'Every Day'; // You can customize this based on your alarm repeat logic
+    if (alarm.repeatType === 'once') {
+      return t('addAlarm.once');
+    }
+    
+    if (alarm.repeatType === 'weekly' && alarm.selectedDays) {
+      const dayNames = [
+        t('addAlarm.sun'),
+        t('addAlarm.mon'),
+        t('addAlarm.tue'),
+        t('addAlarm.wed'),
+        t('addAlarm.thu'),
+        t('addAlarm.fri'),
+        t('addAlarm.sat'),
+      ];
+      
+      // If all days selected
+      if (alarm.selectedDays.length === 7) {
+        return t('addAlarm.daily');
+      }
+      
+      // If weekdays (Mon-Fri)
+      const weekdays = [1, 2, 3, 4, 5];
+      if (weekdays.every(day => alarm.selectedDays!.includes(day)) && alarm.selectedDays.length === 5) {
+        return t('addAlarm.weekdays');
+      }
+      
+      // If weekend (Sat-Sun)
+      const weekend = [0, 6];
+      if (weekend.every(day => alarm.selectedDays!.includes(day)) && alarm.selectedDays.length === 2) {
+        return t('addAlarm.weekend');
+      }
+      
+      // Show selected days
+      return alarm.selectedDays
+        .sort((a, b) => a - b)
+        .map(day => dayNames[day])
+        .join(', ');
+    }
+    
+    return t('addAlarm.daily');
   };
 
   const getTimeWindows = () => {
@@ -115,9 +153,14 @@ export function AlarmCard({ alarm, onToggle, onDelete, onEdit }: AlarmCardProps)
 
       {/* Bottom section */}
       <View style={[styles.bottomSection, { borderTopColor: theme.border }]}>
-        <Text style={[styles.alarmName, { color: theme.text }]}>
-          {alarm.name}
-        </Text>
+        <View style={styles.infoSection}>
+          <Text style={[styles.alarmName, { color: theme.text }]}>
+            {alarm.name}
+          </Text>
+          <Text style={[styles.repeatText, { color: theme.textSecondary }]}>
+            {getRepeatText()}
+          </Text>
+        </View>
         <TouchableOpacity
           style={styles.deleteButton}
           onPress={() => onDelete(alarm.id)}
@@ -196,9 +239,16 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     borderTopWidth: 0.33,
   },
+  infoSection: {
+    flex: 1,
+    gap: 4,
+  },
   alarmName: {
     fontSize: 18,
-    flex: 1,
+    fontWeight: '400',
+  },
+  repeatText: {
+    fontSize: 14,
     fontWeight: '400',
   },
   deleteButton: {

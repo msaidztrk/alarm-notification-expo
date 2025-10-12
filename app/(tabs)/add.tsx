@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Switch,
+  StatusBar,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { TimePickerModal } from '@/components/TimePickerModal';
@@ -28,7 +29,8 @@ export default function AddAlarmScreen() {
   const [timeWindows, setTimeWindows] = useState<TimeWindow[]>([
     { id: '1', startTime: '09:00', endTime: '17:00' }
   ]);
-  const [repeatType, setRepeatType] = useState<'daily' | 'once'>('daily');
+  const [repeatType, setRepeatType] = useState<'daily' | 'once' | 'weekly'>('daily');
+  const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]); // Varsayılan: Tüm günler
   const [notificationInterval, setNotificationInterval] = useState<5 | 10 | 15 | 30 | 60>(15);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [editingTimeWindow, setEditingTimeWindow] = useState<{ windowId: string; type: 'start' | 'end' } | null>(null);
@@ -41,11 +43,37 @@ export default function AddAlarmScreen() {
       setName('');
       setTimeWindows([{ id: '1', startTime: '09:00', endTime: '17:00' }]);
       setRepeatType('daily');
+      setSelectedDays([0, 1, 2, 3, 4, 5, 6]);
       setNotificationInterval(15);
       setIsSubmitting(false);
       setIsNameFocused(false);
     }, [])
   );
+
+  const toggleDay = (day: number) => {
+    if (selectedDays.includes(day)) {
+      // En az bir gün seçili olmalı
+      if (selectedDays.length === 1) {
+        Alert.alert(t('common.error'), t('addAlarm.atLeastOneDay'));
+        return;
+      }
+      setSelectedDays(selectedDays.filter(d => d !== day));
+    } else {
+      setSelectedDays([...selectedDays, day].sort());
+    }
+  };
+
+  const selectAllDays = () => {
+    setSelectedDays([0, 1, 2, 3, 4, 5, 6]);
+  };
+
+  const selectWeekdays = () => {
+    setSelectedDays([1, 2, 3, 4, 5]); // Pazartesi - Cuma
+  };
+
+  const selectWeekend = () => {
+    setSelectedDays([0, 6]); // Pazar - Cumartesi
+  };
 
   const addTimeWindow = () => {
     const newId = Date.now().toString();
@@ -122,6 +150,12 @@ export default function AddAlarmScreen() {
       }
     }
 
+    // Validate that at least one day is selected for weekly alarms
+    if (repeatType === 'weekly' && selectedDays.length === 0) {
+      Alert.alert(t('common.error'), t('addAlarm.selectAtLeastOneDay'));
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -135,6 +169,7 @@ export default function AddAlarmScreen() {
         timeWindows: timeWindows,
         isActive: true,
         repeatType,
+        selectedDays: repeatType === 'weekly' ? selectedDays : undefined,
         notificationInterval,
       });
 
@@ -142,6 +177,7 @@ export default function AddAlarmScreen() {
       setName('');
       setTimeWindows([{ id: '1', startTime: '09:00', endTime: '17:00' }]);
       setRepeatType('daily');
+      setSelectedDays([0, 1, 2, 3, 4, 5, 6]);
       setNotificationInterval(15);
 
       Alert.alert(t('common.success'), t('addAlarm.alarmCreatedSuccessfully'));
@@ -157,6 +193,7 @@ export default function AddAlarmScreen() {
     container: {
       flex: 1,
       backgroundColor: theme.background,
+      paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     },
     keyboardAvoid: {
       flex: 1,
@@ -483,6 +520,151 @@ export default function AddAlarmScreen() {
     timeWindowSeparator: {
       paddingTop: 20,
     },
+    // Modern Days Selection Styles
+    daysHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    quickChips: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+    chip: {
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 20,
+      borderWidth: 1,
+    },
+    chipText: {
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    daysCard: {
+      backgroundColor: theme.card,
+      borderRadius: 16,
+      padding: 16,
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      alignItems: 'center',
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 8,
+      elevation: 3,
+      borderWidth: 1,
+      borderColor: theme.border,
+      gap: 8,
+    },
+    dayCircle: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 0,
+    },
+    dayCircleText: {
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    // Legacy styles
+    quickSelectContainer: {
+      flexDirection: 'row',
+      gap: 8,
+      marginBottom: 16,
+    },
+    quickSelectButton: {
+      flex: 1,
+      paddingVertical: 10,
+      paddingHorizontal: 8,
+      borderRadius: 10,
+      borderWidth: 1.5,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    quickSelectText: {
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    daysCompactGrid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 10,
+      justifyContent: 'space-between',
+    },
+    compactDayButton: {
+      width: '13%',
+      minWidth: 48,
+      aspectRatio: 1,
+      borderRadius: 12,
+      borderWidth: 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+      elevation: 2,
+    },
+    compactDayText: {
+      fontSize: 15,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+    },
+    daysGrid: {
+      gap: 12,
+    },
+    modernDayButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 16,
+      paddingHorizontal: 20,
+      borderRadius: 14,
+      borderWidth: 2,
+      marginBottom: 0,
+      shadowColor: theme.shadow,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 6,
+      elevation: 2,
+    },
+    modernDayButtonTextShort: {
+      fontSize: 18,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+    },
+    modernDayButtonTextFull: {
+      fontSize: 14,
+      fontWeight: '500',
+    },
+    daysContainer: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      justifyContent: 'space-between',
+    },
+    dayButton: {
+      width: '13%',
+      aspectRatio: 1,
+      borderRadius: 12,
+      borderWidth: 2,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.card,
+    },
+    dayButtonSelected: {
+      backgroundColor: theme.primary,
+    },
+    dayButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    dayButtonTextSelected: {
+      color: '#FFFFFF',
+    },
   });
 
   return (
@@ -596,6 +778,18 @@ export default function AddAlarmScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
+                style={[styles.repeatOption, repeatType === 'weekly' && styles.repeatOptionSelected]}
+                onPress={() => setRepeatType('weekly')}
+              >
+                <Text style={[styles.repeatText, repeatType === 'weekly' && styles.repeatTextSelected]}>
+                  {t('addAlarm.weekly')}
+                </Text>
+                <View style={[styles.radioButton, repeatType === 'weekly' && styles.radioButtonSelected]}>
+                  {repeatType === 'weekly' && <View style={styles.radioButtonInner} />}
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
                 style={[styles.repeatOption, repeatType === 'once' && styles.repeatOptionSelected]}
                 onPress={() => setRepeatType('once')}
               >
@@ -607,6 +801,68 @@ export default function AddAlarmScreen() {
                 </View>
               </TouchableOpacity>
             </View>
+
+            {/* Days Selection - Show only when weekly is selected */}
+            {repeatType === 'weekly' && (
+              <View style={styles.section}>
+                <View style={styles.daysHeader}>
+                  <Text style={styles.sectionLabel}>{t('addAlarm.selectDays')}</Text>
+                  <View style={styles.quickChips}>
+                    <TouchableOpacity
+                      style={[styles.chip, { backgroundColor: theme.primary + '15', borderColor: theme.primary }]}
+                      onPress={selectWeekdays}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.chipText, { color: theme.primary }]}>
+                        {t('addAlarm.weekdays')}
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.chip, { backgroundColor: theme.primary + '15', borderColor: theme.primary }]}
+                      onPress={selectWeekend}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[styles.chipText, { color: theme.primary }]}>
+                        {t('addAlarm.weekend')}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Days Grid - iOS Style */}
+                <View style={styles.daysCard}>
+                  {[
+                    { day: 1, short: t('addAlarm.mon') },
+                    { day: 2, short: t('addAlarm.tue') },
+                    { day: 3, short: t('addAlarm.wed') },
+                    { day: 4, short: t('addAlarm.thu') },
+                    { day: 5, short: t('addAlarm.fri') },
+                    { day: 6, short: t('addAlarm.sat') },
+                    { day: 0, short: t('addAlarm.sun') },
+                  ].map(({ day, short }, index) => {
+                    const isSelected = selectedDays.includes(day);
+                    return (
+                      <TouchableOpacity
+                        key={day}
+                        style={[
+                          styles.dayCircle,
+                          { backgroundColor: isSelected ? theme.primary : 'transparent' }
+                        ]}
+                        onPress={() => toggleDay(day)}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={[
+                          styles.dayCircleText,
+                          { color: isSelected ? '#FFFFFF' : theme.text }
+                        ]}>
+                          {short}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
 
             {/* Notification Interval Section */}
             <View style={styles.section}>

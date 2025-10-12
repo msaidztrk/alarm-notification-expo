@@ -377,6 +377,18 @@ export class AlarmService {
       return false;
     }
     
+    // For weekly alarms, check if today is a selected day
+    if (alarm.repeatType === 'weekly' && alarm.selectedDays) {
+      const today = new Date();
+      const currentDayOfWeek = today.getDay(); // 0 = Sunday, 6 = Saturday
+      
+      // If today is not in the selected days, return false
+      if (!alarm.selectedDays.includes(currentDayOfWeek)) {
+        console.log(`Alarm ${alarm.name} is not active today (day ${currentDayOfWeek})`);
+        return false;
+      }
+    }
+    
     // Support multiple time windows or fall back to single window for backward compatibility
     const timeWindows = alarm.timeWindows && alarm.timeWindows.length > 0 
       ? alarm.timeWindows 

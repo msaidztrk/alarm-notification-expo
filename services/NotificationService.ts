@@ -151,6 +151,17 @@ export class NotificationService {
         const targetDate = new Date(today);
         targetDate.setDate(today.getDate() + i);
         
+        // For weekly alarms, check if this day is selected
+        if (alarm.repeatType === 'weekly' && alarm.selectedDays) {
+          const dayOfWeek = targetDate.getDay(); // 0 = Sunday, 6 = Saturday
+          
+          // Skip this day if it's not selected
+          if (!alarm.selectedDays.includes(dayOfWeek)) {
+            console.log(`Skipping day ${dayOfWeek} for weekly alarm ${alarm.name}`);
+            continue;
+          }
+        }
+        
         // Process each time window
         for (let windowIndex = 0; windowIndex < timeWindows.length; windowIndex++) {
           const window = timeWindows[windowIndex];

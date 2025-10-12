@@ -6,6 +6,8 @@ import {
   FlatList,
   RefreshControl,
   SafeAreaView,
+  Platform,
+  StatusBar,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { NotificationCard } from '@/components/NotificationCard';
@@ -47,7 +49,13 @@ export default function NotificationsScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+    <SafeAreaView style={[
+      styles.container, 
+      { 
+        backgroundColor: theme.background,
+        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+      }
+    ]}>
       <FlatList
         data={activeNotifications}
         renderItem={renderNotificationCard}
