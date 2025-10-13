@@ -29,7 +29,7 @@ export default function AddAlarmScreen() {
   const [timeWindows, setTimeWindows] = useState<TimeWindow[]>([
     { id: '1', startTime: '09:00', endTime: '17:00' }
   ]);
-  const [repeatType, setRepeatType] = useState<'daily' | 'once' | 'weekly'>('daily');
+  const [repeatType, setRepeatType] = useState<'daily' | 'daily_today' | 'weekly'>('daily');
   const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]); // Varsayılan: Tüm günler
   const [notificationInterval, setNotificationInterval] = useState<5 | 10 | 15 | 30 | 60>(15);
   const [showTimePicker, setShowTimePicker] = useState(false);
@@ -790,14 +790,14 @@ export default function AddAlarmScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={[styles.repeatOption, repeatType === 'once' && styles.repeatOptionSelected]}
-                onPress={() => setRepeatType('once')}
+                style={[styles.repeatOption, repeatType === 'daily_today' && styles.repeatOptionSelected]}
+                onPress={() => setRepeatType('daily_today')}
               >
-                <Text style={[styles.repeatText, repeatType === 'once' && styles.repeatTextSelected]}>
-                  {t('addAlarm.once')}
+                <Text style={[styles.repeatText, repeatType === 'daily_today' && styles.repeatTextSelected]}>
+                  Bugünlük
                 </Text>
-                <View style={[styles.radioButton, repeatType === 'once' && styles.radioButtonSelected]}>
-                  {repeatType === 'once' && <View style={styles.radioButtonInner} />}
+                <View style={[styles.radioButton, repeatType === 'daily_today' && styles.radioButtonSelected]}>
+                  {repeatType === 'daily_today' && <View style={styles.radioButtonInner} />}
                 </View>
               </TouchableOpacity>
             </View>
@@ -829,37 +829,84 @@ export default function AddAlarmScreen() {
                   </View>
                 </View>
 
-                {/* Days Grid - iOS Style */}
-                <View style={styles.daysCard}>
-                  {[
-                    { day: 1, short: t('addAlarm.mon') },
-                    { day: 2, short: t('addAlarm.tue') },
-                    { day: 3, short: t('addAlarm.wed') },
-                    { day: 4, short: t('addAlarm.thu') },
-                    { day: 5, short: t('addAlarm.fri') },
-                    { day: 6, short: t('addAlarm.sat') },
-                    { day: 0, short: t('addAlarm.sun') },
-                  ].map(({ day, short }, index) => {
-                    const isSelected = selectedDays.includes(day);
-                    return (
-                      <TouchableOpacity
-                        key={day}
-                        style={[
-                          styles.dayCircle,
-                          { backgroundColor: isSelected ? theme.primary : 'transparent' }
-                        ]}
-                        onPress={() => toggleDay(day)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={[
-                          styles.dayCircleText,
-                          { color: isSelected ? '#FFFFFF' : theme.text }
-                        ]}>
-                          {short}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
+                {/* Days Grid - Responsive Layout */}
+                <View style={[styles.daysCard, { flexDirection: 'column', padding: 20, gap: 0 }]}>
+                  {/* Üst satır - 4 gün */}
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 }}>
+                    {[
+                      { day: 1, short: t('addAlarm.mon') },
+                      { day: 2, short: t('addAlarm.tue') },
+                      { day: 3, short: t('addAlarm.wed') },
+                      { day: 4, short: t('addAlarm.thu') },
+                    ].map(({ day, short }) => {
+                      const isSelected = selectedDays.includes(day);
+                      return (
+                        <TouchableOpacity
+                          key={day}
+                          style={{
+                            flex: 1,
+                            aspectRatio: 1,
+                            marginHorizontal: 4,
+                            borderRadius: 12,
+                            borderWidth: 2,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: isSelected ? theme.primary : 'transparent',
+                            borderColor: isSelected ? theme.primary : theme.border,
+                          }}
+                          onPress={() => toggleDay(day)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={{
+                            fontSize: 12,
+                            fontWeight: '600',
+                            color: isSelected ? '#FFFFFF' : theme.text
+                          }}>
+                            {short}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                  
+                  {/* Alt satır - 3 gün + boşluk */}
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                    {[
+                      { day: 5, short: t('addAlarm.fri') },
+                      { day: 6, short: t('addAlarm.sat') },
+                      { day: 0, short: t('addAlarm.sun') },
+                    ].map(({ day, short }) => {
+                      const isSelected = selectedDays.includes(day);
+                      return (
+                        <TouchableOpacity
+                          key={day}
+                          style={{
+                            flex: 1,
+                            aspectRatio: 1,
+                            marginHorizontal: 4,
+                            borderRadius: 12,
+                            borderWidth: 2,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            backgroundColor: isSelected ? theme.primary : 'transparent',
+                            borderColor: isSelected ? theme.primary : theme.border,
+                          }}
+                          onPress={() => toggleDay(day)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={{
+                            fontSize: 12,
+                            fontWeight: '600',
+                            color: isSelected ? '#FFFFFF' : theme.text
+                          }}>
+                            {short}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                    {/* Boşluk için invisible element */}
+                    <View style={{ flex: 1, marginHorizontal: 4 }} />
+                  </View>
                 </View>
               </View>
             )}

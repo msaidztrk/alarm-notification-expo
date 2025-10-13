@@ -25,6 +25,9 @@ export default function RootLayout() {
       // Clean up any out-of-window notifications
       await AlarmService.cleanupOutOfWindowNotifications();
       
+      // Initialize daily cleanup for today-only alarms
+      await AlarmService.initializeDailyCleanup();
+      
       // Initialize background tasks
       const hasBackgroundPermission = await BackgroundTaskService.initialize();
       console.log('Background task permission granted:', hasBackgroundPermission);

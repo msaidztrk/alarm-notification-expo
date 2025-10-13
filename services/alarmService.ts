@@ -276,8 +276,8 @@ export class AlarmService {
       const alarms = await this.getAlarms();
       const alarm = alarms.find(a => a.id === notification.alarmId);
       
-      if (alarm?.repeatType === 'once') {
-        // If it's a one-time alarm, delete it completely
+      if (alarm?.repeatType === 'daily_today') {
+        // If it's a daily_today alarm, delete it completely
         await this.deleteAlarm(notification.alarmId);
       } else {
         // For recurring alarms, just mark as completed for today
@@ -412,5 +412,61 @@ export class AlarmService {
     const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
     console.log(`Current time: ${timeString}`);
     return timeString;
+  }
+
+  // Bugünlük alarmları otomatik silme işlevi
+  static async cleanupDailyTodayAlarms(): Promise<void> {
+    try {
+      const alarms = await this.getAlarms();
+      const today = new Date().toDateString();
+      
+      // Bugünlük alarmları filtrele
+      const todayOnlyAlarms = alarms.filter(alarm => alarm.repeatType === 'daily_today');
+      
+      for (const alarm of todayOnlyAlarms) {
+        const alarmDate = new Date(alarm.createdAt || alarm.id).toDateString();
+        
+        // Eğer alarm bugünden farklı bir günde oluşturulmuşsa sil
+        if (alarmDate !== today) {
+          console.log(`Cleaning up daily_today alarm: ${alarm.id}`);
+          await this.deleteAlarm(alarm.id);
+          
+          // Notification'ı da iptal et
+          try {
+            await NotificationService.cancelNotification(alarm.id);
+          } catch (error) {
+            console.error('Error canceling notification:', error);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error cleaning up daily_today alarms:', error);
+    }
+  }
+
+  // Uygulama başladığında ve gece yarısında çalışacak temizlik
+  static async initializeDailyCleanup(): Promise<void> {
+    // Uygulama açıldığında bir kez çalıştır
+    await this.cleanupDailyTodayAlarms();
+    
+    // Gece yarısı için zamanlayıcı kur (her gün 00:01'de)
+    const now = new Date();
+    const tomorrow = new Date(now);
+    tomorrow.setDate(now.getDate() + 1);
+    tomorrow.setHours(0, 1, 0, 0); // Gece yarısından 1 dakika sonra
+    
+    const msUntilMidnight = tomorrow.getTime() - now.getTime();
+    
+    setTimeout(async () => {
+      await this.cleanupDailyTodayAlarms();
+      
+      // Her 24 saatte bir tekrarla
+      setInterval(async () => {
+        await this.cleanupDailyTodayAlarms();
+      }, 24 * 60 * 60 * 1000); // 24 saat
+      
+    }, msUntilMidnight);
+    
+    console.log(`Daily cleanup scheduled in ${Math.round(msUntilMidnight / 1000 / 60)} minutes`);
   }
 }

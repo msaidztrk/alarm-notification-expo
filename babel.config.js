@@ -1,7 +1,8 @@
 module.exports = {
   presets: ['babel-preset-expo'],
   plugins: [
-    // Conditionally disable reanimated for release builds to avoid Windows path issues
-    ...(process.env.NODE_ENV === 'production' ? [] : ['react-native-reanimated/plugin']),
+    // react-native-reanimated/plugin removed due to Windows path length issues
+    // If you need reanimated, install it and uncomment the line below:
+    // 'react-native-reanimated/plugin',
   ],
 };
