@@ -75,15 +75,21 @@ export class AlarmService {
       // Auto-migrate old alarms on read (lightweight - only in memory)
       let needsSave = false;
       const migratedAlarms = alarms.map((alarm: Alarm) => {
+        let migratedAlarm = { ...alarm };
+        
         // If alarm doesn't have timeWindows but has startTime and endTime, auto-migrate it
         if ((!alarm.timeWindows || alarm.timeWindows.length === 0) && alarm.startTime && alarm.endTime) {
           needsSave = true;
-          return {
-            ...alarm,
-            timeWindows: [{ id: 'default', startTime: alarm.startTime, endTime: alarm.endTime }]
-          };
+          migratedAlarm.timeWindows = [{ id: 'default', startTime: alarm.startTime, endTime: alarm.endTime }];
         }
-        return alarm;
+        
+        // Add soundEnabled if missing
+        if (migratedAlarm.soundEnabled === undefined) {
+          needsSave = true;
+          migratedAlarm.soundEnabled = true;
+        }
+        
+        return migratedAlarm;
       });
       
       // Save migrated alarms asynchronously in background (don't wait)
@@ -163,12 +169,43 @@ export class AlarmService {
 
   static async cancelScheduledNotifications(alarmId: string): Promise<void> {
     try {
-      // Cancel all scheduled notifications for this alarm
+      // Try known patterns first
+      const patterns = [
+        `alarm_${alarmId}`,
+        `alarm_${alarmId}_day_`,
+        `alarm_${alarmId}_day_` // will be used in includes checks
+      ];
+
       for (let i = 0; i < 7; i++) {
-        const identifier = `alarm_${alarmId}_day_${i}`;
-        await NotificationService.cancelNotification(identifier);
+        // cancel day-level patterns (may include window/interval suffixes)
+        const dayPrefix = `alarm_${alarmId}_day_${i}`;
+        await NotificationService.cancelNotification(dayPrefix);
+        // also try variants
+        await NotificationService.cancelNotification(`${dayPrefix}_window_0_interval_0`);
       }
-      console.log(`Cancelled scheduled notifications for alarm: ${alarmId}`);
+
+      // Cancel immediate/persistent notification
+      await NotificationService.cancelNotification(`alarm_${alarmId}`);
+
+      // Cancel any scheduled notifications that contain the alarmId
+      const scheduledNotifications = await NotificationService.getAllScheduledNotifications();
+      for (const notification of scheduledNotifications) {
+        const id = (notification as any).identifier || '';
+        if (id && id.includes(alarmId)) {
+          await NotificationService.cancelNotification(id);
+        }
+      }
+
+      // Dismiss any delivered notifications that contain the alarmId
+      const deliveredNotifications = await NotificationService.getAllDeliveredNotifications();
+      for (const notification of deliveredNotifications) {
+        const id = notification.request.identifier;
+        if (id && id.includes(alarmId)) {
+          await NotificationService.dismissNotification(id);
+        }
+      }
+
+      console.log(`Cancelled all notifications for alarm: ${alarmId}`);
     } catch (error) {
       console.error('Error cancelling scheduled notifications:', error);
     }
@@ -216,6 +253,15 @@ export class AlarmService {
   }
 
   static async createNotification(alarm: Alarm): Promise<AlarmNotification> {
+    // Only create notifications for active alarms inside their time window
+    if (!alarm.isActive) {
+      throw new Error('Cannot create notification for inactive alarm');
+    }
+    const currentTime = this.getCurrentTime();
+    if (!this.isAlarmInAnyTimeWindow(alarm, currentTime)) {
+      throw new Error('Alarm is not in an active time window');
+    }
+
     // First check if there's already an active notification for this alarm
     const existingNotifications = await this.getActiveNotifications();
     const existingNotification = existingNotifications.find(n => 

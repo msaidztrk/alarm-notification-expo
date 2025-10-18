@@ -14,6 +14,7 @@ export interface Alarm {
   repeatType: 'daily' | 'daily_today' | 'weekly'; // Tekrar türü - daily_today: sadece bugün için, gece yarısı otomatik silinir
   selectedDays?: number[]; // 0=Pazar, 1=Pazartesi, 2=Salı, ..., 6=Cumartesi
   notificationInterval: 5 | 10 | 15 | 30 | 60; // Dakika cinsinden notification aralığı (60 = 1 saat)
+  soundEnabled: boolean; // Whether notifications should play sound
   createdAt: number;
   completedToday?: boolean;
   lastCompletedDate?: string; // YYYY-MM-DD format

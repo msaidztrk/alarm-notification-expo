@@ -40,6 +40,8 @@
     "every15Minutes": "Her 15 Dakika",
     "every30Minutes": "Her 30 Dakika",
     "every1Hour": "Her 1 Saat",
+    "soundSettings": "Ses Ayarları",
+    "enableSound": "Sesli Bildirim",
     "howItWorks": "Nasıl çalışır",
     "infoPoint1": "Belirttiğiniz tüm zaman pencerelerinde bildirimler gönderilecektir",
     "infoPoint2": "Birden fazla zaman penceresi, gün boyunca farklı aktif dönemler belirlemenizi sağlar",

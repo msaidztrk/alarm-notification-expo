@@ -40,6 +40,8 @@
     "every15Minutes": "Every 15 Minutes",
     "every30Minutes": "Every 30 Minutes",
     "every1Hour": "Every 1 Hour",
+    "soundSettings": "Sound Settings",
+    "enableSound": "Enable Sound",
     "howItWorks": "How it works",
     "infoPoint1": "Notifications will be sent during all your specified time windows",
     "infoPoint2": "Multiple time windows allow you to set different active periods throughout the day",

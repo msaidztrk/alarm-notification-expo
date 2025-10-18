@@ -32,6 +32,7 @@ export default function AddAlarmScreen() {
   const [repeatType, setRepeatType] = useState<'daily' | 'daily_today' | 'weekly'>('daily');
   const [selectedDays, setSelectedDays] = useState<number[]>([0, 1, 2, 3, 4, 5, 6]); // Varsayılan: Tüm günler
   const [notificationInterval, setNotificationInterval] = useState<5 | 10 | 15 | 30 | 60>(15);
+  const [soundEnabled, setSoundEnabled] = useState(true);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [editingTimeWindow, setEditingTimeWindow] = useState<{ windowId: string; type: 'start' | 'end' } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -45,6 +46,7 @@ export default function AddAlarmScreen() {
       setRepeatType('daily');
       setSelectedDays([0, 1, 2, 3, 4, 5, 6]);
       setNotificationInterval(15);
+      setSoundEnabled(true);
       setIsSubmitting(false);
       setIsNameFocused(false);
     }, [])
@@ -171,6 +173,7 @@ export default function AddAlarmScreen() {
         repeatType,
         selectedDays: repeatType === 'weekly' ? selectedDays : undefined,
         notificationInterval,
+        soundEnabled,
       });
 
       // Reset form
@@ -179,6 +182,7 @@ export default function AddAlarmScreen() {
       setRepeatType('daily');
       setSelectedDays([0, 1, 2, 3, 4, 5, 6]);
       setNotificationInterval(15);
+      setSoundEnabled(true);
 
       Alert.alert(t('common.success'), t('addAlarm.alarmCreatedSuccessfully'));
     } catch (error) {
@@ -334,6 +338,9 @@ export default function AddAlarmScreen() {
       height: 10,
       borderRadius: 5,
       backgroundColor: theme.primary,
+    },
+    switch: {
+      transform: [{ scaleX: 1.1 }, { scaleY: 1.1 }],
     },
     repeatOption: {
       backgroundColor: theme.card,
@@ -974,6 +981,24 @@ export default function AddAlarmScreen() {
                   {notificationInterval === 60 && <View style={styles.radioButtonInner} />}
                 </View>
               </TouchableOpacity>
+            </View>
+
+            {/* Sound Settings Section */}
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>{t('addAlarm.soundSettings')}</Text>
+              
+              <View style={[styles.repeatOption, styles.repeatOptionLast]}>
+                <Text style={styles.repeatText}>
+                  {t('addAlarm.enableSound')}
+                </Text>
+                <Switch
+                  value={soundEnabled}
+                  onValueChange={setSoundEnabled}
+                  trackColor={{ false: '#E5E5EA', true: '#34C759' }}
+                  thumbColor='#FFFFFF'
+                  style={styles.switch}
+                />
+              </View>
             </View>
 
             {/* Info Section */}

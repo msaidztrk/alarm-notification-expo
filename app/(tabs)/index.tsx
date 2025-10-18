@@ -34,6 +34,10 @@ export default function AlarmsScreen() {
     await updateAlarm(id, { isActive });
   };
 
+  const handleToggleSound = async (id: string, soundEnabled: boolean) => {
+    await updateAlarm(id, { soundEnabled });
+  };
+
   const handleDeleteAlarm = async (id: string) => {
     await deleteAlarm(id);
   };
@@ -58,6 +62,7 @@ export default function AlarmsScreen() {
       isActive: true,
       repeatType: 'daily',
       notificationInterval: 15,
+      soundEnabled: true,
       createdAt: Date.now()
     };
     
@@ -79,6 +84,7 @@ export default function AlarmsScreen() {
       onToggle={handleToggleAlarm}
       onDelete={handleDeleteAlarm}
       onEdit={handleEditAlarm}
+      onToggleSound={handleToggleSound}
     />
   );
 

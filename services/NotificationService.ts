@@ -86,7 +86,7 @@ export class NotificationService {
             action: 'open_active_tab'
           },
           badge: 1,
-          sound: 'default',
+          sound: alarm.soundEnabled ? 'default' : null,
           // Make notification persistent and non-dismissible
           sticky: true,
           autoDismiss: false,
@@ -209,7 +209,7 @@ export class NotificationService {
                     windowIndex: windowIndex
                   },
                   badge: 1,
-                  sound: 'default',
+                  sound: alarm.soundEnabled ? 'default' : null,
                 },
                 trigger: {
                   type: 'date',
@@ -250,9 +250,44 @@ export class NotificationService {
   static async cancelNotificationsForAlarm(alarmId: string): Promise<void> {
     if (Platform.OS !== 'web') {
       try {
-        const identifier = `alarm_${alarmId}`;
-        await Notifications.cancelScheduledNotificationAsync(identifier);
-        await Notifications.dismissNotificationAsync(identifier);
+        // Attempt targeted cancellation for the canonical identifier
+        const canonical = `alarm_${alarmId}`;
+        try {
+          await Notifications.cancelScheduledNotificationAsync(canonical);
+        } catch (e) {
+          // ignore - we'll attempt broader cancellation below
+        }
+        try {
+          await Notifications.dismissNotificationAsync(canonical);
+        } catch (e) {
+          // ignore
+        }
+
+        // Cancel any scheduled notifications whose identifier contains the alarmId
+        const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+        for (const req of scheduled) {
+          const id = (req as any).identifier || (req as any).id || '';
+          if (id && id.includes(alarmId)) {
+            try {
+              await Notifications.cancelScheduledNotificationAsync(id);
+            } catch (err) {
+              console.warn(`Failed cancelling scheduled notification ${id}:`, err);
+            }
+          }
+        }
+
+        // Dismiss any presented (delivered) notifications that belong to this alarm
+        const presented = await Notifications.getPresentedNotificationsAsync();
+        for (const p of presented) {
+          const pid = p.request.identifier;
+          if (pid && pid.includes(alarmId)) {
+            try {
+              await Notifications.dismissNotificationAsync(pid);
+            } catch (err) {
+              console.warn(`Failed dismissing presented notification ${pid}:`, err);
+            }
+          }
+        }
       } catch (error) {
         console.error('Error canceling notifications for alarm:', error);
       }
@@ -262,11 +297,67 @@ export class NotificationService {
   static async cancelNotification(identifier: string): Promise<void> {
     if (Platform.OS !== 'web' && identifier) {
       try {
-        await Notifications.cancelScheduledNotificationAsync(identifier);
-        await Notifications.dismissNotificationAsync(identifier);
+        // Try direct cancellation first
+        try {
+          await Notifications.cancelScheduledNotificationAsync(identifier);
+        } catch (e) {
+          // ignore and try fallback
+        }
+        try {
+          await Notifications.dismissNotificationAsync(identifier);
+        } catch (e) {
+          // ignore and try fallback
+        }
+
+        // Fallback: if the exact identifier didn't match, try cancelling any scheduled requests that include this identifier
+        const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+        for (const req of scheduled) {
+          const id = (req as any).identifier || (req as any).id || '';
+          if (id && identifier && id.includes(identifier)) {
+            try {
+              await Notifications.cancelScheduledNotificationAsync(id);
+            } catch (err) {
+              console.warn(`Failed cancelling fallback scheduled notification ${id}:`, err);
+            }
+          }
+        }
       } catch (error) {
         console.error('Error canceling notification:', error);
       }
+    }
+  }
+
+  static async dismissNotification(identifier: string): Promise<void> {
+    if (Platform.OS !== 'web' && identifier) {
+      try {
+        await Notifications.dismissNotificationAsync(identifier);
+      } catch (error) {
+        console.error('Error dismissing notification:', error);
+      }
+    }
+  }
+
+  static async getAllScheduledNotifications(): Promise<Notifications.NotificationRequest[]> {
+    if (Platform.OS === 'web') {
+      return [];
+    }
+    try {
+      return await Notifications.getAllScheduledNotificationsAsync();
+    } catch (error) {
+      console.error('Error getting scheduled notifications:', error);
+      return [];
+    }
+  }
+
+  static async getAllDeliveredNotifications(): Promise<Notifications.Notification[]> {
+    if (Platform.OS === 'web') {
+      return [];
+    }
+    try {
+      return await Notifications.getPresentedNotificationsAsync();
+    } catch (error) {
+      console.error('Error getting delivered notifications:', error);
+      return [];
     }
   }
 
@@ -295,10 +386,16 @@ export class NotificationService {
 
   static async recreateNotificationIfDismissed(alarm: Alarm, notificationId: string): Promise<void> {
     if (Platform.OS !== 'web') {
-      // Check if notification still exists
+      // Don't recreate notifications for inactive alarms
+      if (!alarm.isActive) {
+        return;
+      }
+
+      // Check if the main persistent notification still exists
       const presentedNotifications = await Notifications.getPresentedNotificationsAsync();
-      const exists = presentedNotifications.some(n => n.request.identifier === `alarm_${alarm.id}`);
-      
+      const expectedId = `alarm_${alarm.id}`;
+      const exists = presentedNotifications.some(n => n.request.identifier === expectedId || n.request.identifier.includes(alarm.id));
+
       if (!exists) {
         console.log(`Notification for alarm ${alarm.name} was dismissed, recreating...`);
         await this.scheduleAlarmNotification(alarm, notificationId);

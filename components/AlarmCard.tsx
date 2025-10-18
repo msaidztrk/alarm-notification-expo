@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { Alarm } from '@/types/alarm';
 import { AlarmService } from '@/services/alarmService';
-import { Trash2, Clock } from 'lucide-react-native';
+import { Trash2, Clock, Bell } from 'lucide-react-native';
 import { useTranslation } from '@/services/LanguageProvider';
 import { useTheme } from '@/services/ThemeProvider';
 
@@ -17,14 +17,16 @@ interface AlarmCardProps {
   onToggle: (id: string, isActive: boolean) => void;
   onDelete: (id: string) => void;
   onEdit: (alarm: Alarm) => void;
+  onToggleSound?: (id: string, soundEnabled: boolean) => void;
 }
 
-export function AlarmCard({ alarm, onToggle, onDelete, onEdit }: AlarmCardProps) {
+export const AlarmCard = React.memo(function AlarmCard({ alarm, onToggle, onDelete, onEdit, onToggleSound }: AlarmCardProps) {
   const { t } = useTranslation();
   const { theme } = useTheme();
-  const currentTime = AlarmService.getCurrentTime();
-  const isCurrentlyActive = AlarmService.isAlarmInAnyTimeWindow(alarm, currentTime);
-
+  
+  const currentTime = useMemo(() => AlarmService.getCurrentTime(), []);
+  const isCurrentlyActive = useMemo(() => AlarmService.isAlarmInAnyTimeWindow(alarm, currentTime), [alarm, currentTime]);
+  
   const getStatusColor = () => {
     return alarm.isActive ? '#34C759' : '#8A8A8E';
   };
@@ -33,8 +35,9 @@ export function AlarmCard({ alarm, onToggle, onDelete, onEdit }: AlarmCardProps)
     return alarm.isActive ? 'Scheduled' : 'Off';
   };
 
-  const getRepeatText = () => {
-    if (alarm.repeatType === 'once') {
+  const getRepeatText = useMemo(() => {
+    // Support legacy 'once' and new 'daily_today' semantics
+    if (alarm.repeatType === 'daily_today' || (alarm as any).repeatType === 'once') {
       return t('addAlarm.once');
     }
     
@@ -74,9 +77,9 @@ export function AlarmCard({ alarm, onToggle, onDelete, onEdit }: AlarmCardProps)
     }
     
     return t('addAlarm.daily');
-  };
+  }, [alarm.repeatType, alarm.selectedDays, t]);
 
-  const getTimeWindows = () => {
+  const getTimeWindows = useMemo(() => {
     // Ensure alarm has valid properties
     if (!alarm) {
       return [{ id: 'default', startTime: '09:00', endTime: '17:00' }];
@@ -92,7 +95,7 @@ export function AlarmCard({ alarm, onToggle, onDelete, onEdit }: AlarmCardProps)
     const endTime = alarm.endTime || '17:00';
     
     return [{ id: 'default', startTime, endTime }];
-  };
+  }, [alarm]);
 
   return (
     <TouchableOpacity
@@ -108,7 +111,7 @@ export function AlarmCard({ alarm, onToggle, onDelete, onEdit }: AlarmCardProps)
       <View style={styles.mainContent}>
         <View style={styles.leftContent}>
           <View style={styles.timeWindowsContainer}>
-            {getTimeWindows().map((window, index) => (
+            {getTimeWindows.map((window, index) => (
               <View key={window.id} style={styles.timeSection}>
                 <View style={styles.startTimeContainer}>
                   <Text style={[styles.timeText, { color: theme.text }]}>
@@ -158,9 +161,17 @@ export function AlarmCard({ alarm, onToggle, onDelete, onEdit }: AlarmCardProps)
             {alarm.name}
           </Text>
           <Text style={[styles.repeatText, { color: theme.textSecondary }]}>
-            {getRepeatText()}
+            {getRepeatText}
           </Text>
         </View>
+        {onToggleSound && (
+          <TouchableOpacity
+            style={styles.soundButton}
+            onPress={() => onToggleSound(alarm.id, !alarm.soundEnabled)}
+          >
+            <Bell size={20} color={alarm.soundEnabled ? '#34C759' : '#8A8A8E'} />
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
           style={styles.deleteButton}
           onPress={() => onDelete(alarm.id)}
@@ -170,7 +181,7 @@ export function AlarmCard({ alarm, onToggle, onDelete, onEdit }: AlarmCardProps)
       </View>
     </TouchableOpacity>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -254,5 +265,9 @@ const styles = StyleSheet.create({
   deleteButton: {
     padding: 4,
     paddingLeft: 16,
+  },
+  soundButton: {
+    padding: 4,
+    paddingHorizontal: 8,
   },
 });
