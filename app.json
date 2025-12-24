@@ -13,6 +13,10 @@
     },
     "android": {
       "package": "com.msaidztrk.timewindowalarms",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/playstore.png",
+        "backgroundColor": "#0F172A"
+      },
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "SCHEDULE_EXACT_ALARM",
@@ -23,6 +27,15 @@
         "SYSTEM_ALERT_WINDOW",
         "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"
       ]
+    },
+    "androidStatusBar": {
+      "barStyle": "light-content",
+      "backgroundColor": "transparent",
+      "translucent": true
+    },
+    "androidNavigationBar": {
+      "visible": "sticky-immersive",
+      "backgroundColor": "transparent"
     },
     "web": {
       "bundler": "metro",

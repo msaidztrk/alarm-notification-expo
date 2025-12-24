@@ -96,7 +96,9 @@ const translations = {
       enterAlarmName: 'Please enter an alarm name',
       startEndTimeSame: 'Start time and end time cannot be the same',
       alarmCreatedSuccessfully: 'Time window alarm created successfully!',
-      failedToCreateAlarm: 'Failed to create alarm. Please try again.'
+      failedToCreateAlarm: 'Failed to create alarm. Please try again.',
+      soundSettings: 'Sound Settings',
+      enableSound: 'Enable Sound'
     },
     notifications: {
       title: 'Notifications',
@@ -211,7 +213,9 @@ const translations = {
       enterAlarmName: 'Lütfen bir alarm adı girin',
       startEndTimeSame: 'Başlangıç ve bitiş saati aynı olamaz',
       alarmCreatedSuccessfully: 'Zaman aralığı alarmı başarıyla oluşturuldu!',
-      failedToCreateAlarm: 'Alarm oluşturulamadı. Lütfen tekrar deneyin.'
+      failedToCreateAlarm: 'Alarm oluşturulamadı. Lütfen tekrar deneyin.',
+      soundSettings: 'Ses Ayarları',
+      enableSound: 'Sesli Bildirim'
     },
     notifications: {
       title: 'Bildirimler',
