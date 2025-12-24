@@ -250,6 +250,7 @@ const getStyles = (theme: any) => StyleSheet.create({
   content: {
     flex: 1,
     paddingTop: 20,
+    paddingBottom: 120,
   },
   sectionTitle: {
     fontSize: 13,

@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { Platform } from 'react-native';
+import * as NavigationBar from 'expo-navigation-bar';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { NotificationService } from '@/services/NotificationService';
 import { BackgroundTaskService } from '@/services/backgroundTaskService';
@@ -17,6 +19,17 @@ export default function RootLayout() {
   useEffect(() => {
     const initializeServices = async () => {
       console.log('Initializing notifications and background tasks...');
+
+      // Android'de navigation bar'ı gizle
+      if (Platform.OS === 'android') {
+        try {
+          await NavigationBar.setVisibilityAsync('hidden');
+          await NavigationBar.setBehaviorAsync('overlay-swipe');
+          await NavigationBar.setBackgroundColorAsync('transparent');
+        } catch (error) {
+          console.log('NavigationBar error:', error);
+        }
+      }
 
       // Initialize notifications
       const hasNotificationPermission = await NotificationService.initialize();
@@ -91,7 +104,7 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="+not-found" />
         </Stack>
-        <StatusBar style="auto" />
+        <StatusBar style="light" hidden={false} translucent backgroundColor="transparent" />
       </LanguageProvider>
     </ThemeProvider>
   );

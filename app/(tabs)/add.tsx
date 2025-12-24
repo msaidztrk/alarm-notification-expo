@@ -91,7 +91,7 @@ export default function AddAlarmScreen() {
   };
 
   const updateTimeWindow = (id: string, field: 'startTime' | 'endTime', value: string) => {
-    setTimeWindows(timeWindows.map(window => 
+    setTimeWindows(timeWindows.map(window =>
       window.id === id ? { ...window, [field]: value } : window
     ));
   };
@@ -104,8 +104,8 @@ export default function AddAlarmScreen() {
   const handleTimeSelect = (time: string) => {
     if (editingTimeWindow) {
       updateTimeWindow(
-        editingTimeWindow.windowId, 
-        editingTimeWindow.type === 'start' ? 'startTime' : 'endTime', 
+        editingTimeWindow.windowId,
+        editingTimeWindow.type === 'start' ? 'startTime' : 'endTime',
         time
       );
     }
@@ -116,19 +116,19 @@ export default function AddAlarmScreen() {
   const calculateDuration = (start: string, end: string) => {
     const [startHour, startMinute] = start.split(':').map(Number);
     const [endHour, endMinute] = end.split(':').map(Number);
-    
+
     let startMinutes = startHour * 60 + startMinute;
     let endMinutes = endHour * 60 + endMinute;
-    
+
     // Handle overnight time window
     if (endMinutes <= startMinutes) {
       endMinutes += 24 * 60; // Add 24 hours
     }
-    
+
     const diffMinutes = endMinutes - startMinutes;
     const hours = Math.floor(diffMinutes / 60);
     const minutes = diffMinutes % 60;
-    
+
     if (hours === 0) {
       return `${minutes}m`;
     } else if (minutes === 0) {
@@ -163,7 +163,7 @@ export default function AddAlarmScreen() {
     try {
       // Use first time window for backward compatibility
       const firstWindow = timeWindows[0];
-      
+
       await addAlarm({
         name: name.trim(),
         startTime: firstWindow.startTime,
@@ -208,7 +208,7 @@ export default function AddAlarmScreen() {
     form: {
       paddingHorizontal: 20,
       paddingTop: 24,
-      paddingBottom: 100,
+      paddingBottom: 200,
     },
     section: {
       marginBottom: 32,
@@ -408,17 +408,10 @@ export default function AddAlarmScreen() {
       color: theme.textSecondary,
       lineHeight: 20,
     },
-    bottomContainer: {
-      position: 'absolute',
-      bottom: 0,
-      left: 0,
-      right: 0,
-      backgroundColor: theme.card,
+    saveButtonContainer: {
       paddingHorizontal: 20,
       paddingTop: 16,
-      paddingBottom: 34,
-      borderTopWidth: 1,
-      borderTopColor: theme.border,
+      paddingBottom: 120,
     },
     createButton: {
       backgroundColor: theme.primary,
@@ -676,7 +669,7 @@ export default function AddAlarmScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={styles.keyboardAvoid}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
@@ -706,7 +699,7 @@ export default function AddAlarmScreen() {
             <View style={styles.section}>
               <View style={styles.sectionHeaderRow}>
                 <Text style={styles.sectionLabel}>{t('addAlarm.timeWindows')}</Text>
-                <TouchableOpacity 
+                <TouchableOpacity
                   style={styles.addTimeWindowButton}
                   onPress={addTimeWindow}
                 >
@@ -771,7 +764,7 @@ export default function AddAlarmScreen() {
             {/* Repeat Section */}
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>{t('addAlarm.repeat')}</Text>
-              
+
               <TouchableOpacity
                 style={[styles.repeatOption, repeatType === 'daily' && styles.repeatOptionSelected]}
                 onPress={() => setRepeatType('daily')}
@@ -875,7 +868,7 @@ export default function AddAlarmScreen() {
                       );
                     })}
                   </View>
-                  
+
                   {/* Alt satır - 3 gün + boşluk */}
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                     {[
@@ -921,7 +914,7 @@ export default function AddAlarmScreen() {
             {/* Notification Interval Section */}
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>{t('addAlarm.notificationInterval')}</Text>
-              
+
               <TouchableOpacity
                 style={[styles.repeatOption, notificationInterval === 5 && styles.repeatOptionSelected]}
                 onPress={() => setNotificationInterval(5)}
@@ -986,7 +979,7 @@ export default function AddAlarmScreen() {
             {/* Sound Settings Section */}
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>{t('addAlarm.soundSettings')}</Text>
-              
+
               <View style={[styles.repeatOption, styles.repeatOptionLast]}>
                 <Text style={styles.repeatText}>
                   {t('addAlarm.enableSound')}
@@ -1023,31 +1016,31 @@ export default function AddAlarmScreen() {
                   </View>
                 </View>
               </View>
+
+              {/* Save Button - Inside scroll */}
+              <View style={styles.saveButtonContainer}>
+                <TouchableOpacity
+                  style={[styles.createButton, (isSubmitting || !name.trim()) && styles.disabledButton]}
+                  onPress={handleCreateAlarm}
+                  disabled={isSubmitting || !name.trim()}
+                >
+                  {isSubmitting ? (
+                    <Text style={styles.createButtonText}>
+                      {t('addAlarm.creating')}
+                    </Text>
+                  ) : (
+                    <>
+                      <Plus size={22} color="#ffffff" />
+                      <Text style={[styles.createButtonText, !name.trim() && styles.createButtonTextDisabled]}>
+                        {t('addAlarm.createAlarm')}
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
         </ScrollView>
-
-        {/* Fixed Bottom Button */}
-        <View style={styles.bottomContainer}>
-          <TouchableOpacity
-            style={[styles.createButton, (isSubmitting || !name.trim()) && styles.disabledButton]}
-            onPress={handleCreateAlarm}
-            disabled={isSubmitting || !name.trim()}
-          >
-            {isSubmitting ? (
-              <Text style={styles.createButtonText}>
-                {t('addAlarm.creating')}
-              </Text>
-            ) : (
-              <>
-                <Plus size={22} color="#ffffff" />
-                <Text style={[styles.createButtonText, !name.trim() && styles.createButtonTextDisabled]}>
-                  {t('addAlarm.createAlarm')}
-                </Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
       </KeyboardAvoidingView>
 
       <TimePickerModal
@@ -1058,15 +1051,15 @@ export default function AddAlarmScreen() {
         }}
         onTimeSelect={handleTimeSelect}
         initialTime={
-          editingTimeWindow 
+          editingTimeWindow
             ? timeWindows.find(w => w.id === editingTimeWindow.windowId)?.[
-                editingTimeWindow.type === 'start' ? 'startTime' : 'endTime'
-              ] || '09:00'
+            editingTimeWindow.type === 'start' ? 'startTime' : 'endTime'
+            ] || '09:00'
             : '09:00'
         }
         title={
-          editingTimeWindow?.type === 'start' 
-            ? t('addAlarm.selectStartTime') 
+          editingTimeWindow?.type === 'start'
+            ? t('addAlarm.selectStartTime')
             : t('addAlarm.selectEndTime')
         }
       />

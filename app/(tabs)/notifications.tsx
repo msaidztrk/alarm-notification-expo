@@ -50,8 +50,8 @@ export default function NotificationsScreen() {
 
   return (
     <SafeAreaView style={[
-      styles.container, 
-      { 
+      styles.container,
+      {
         backgroundColor: theme.background,
         paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
       }
@@ -62,8 +62,8 @@ export default function NotificationsScreen() {
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContainer}
         refreshControl={
-          <RefreshControl 
-            refreshing={loading} 
+          <RefreshControl
+            refreshing={loading}
             onRefresh={refresh}
             tintColor={theme.primary}
             colors={[theme.primary]}
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     paddingTop: 16,
-    paddingBottom: 100,
+    paddingBottom: 120,
   },
   emptyState: {
     alignItems: 'center',
