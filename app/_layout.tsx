@@ -17,27 +17,27 @@ export default function RootLayout() {
   useEffect(() => {
     const initializeServices = async () => {
       console.log('Initializing notifications and background tasks...');
-      
+
       // Initialize notifications
       const hasNotificationPermission = await NotificationService.initialize();
       console.log('Notification permission granted:', hasNotificationPermission);
-      
+
       // Clean up any out-of-window notifications
       await AlarmService.cleanupOutOfWindowNotifications();
-      
+
       // Initialize daily cleanup for today-only alarms
       await AlarmService.initializeDailyCleanup();
-      
+
       // Initialize background tasks
       const hasBackgroundPermission = await BackgroundTaskService.initialize();
       console.log('Background task permission granted:', hasBackgroundPermission);
-      
+
       const backgroundStatus = await BackgroundTaskService.getStatus();
       console.log('Background fetch status:', backgroundStatus);
-      
+
       // Configure deep linking
       NavigationService.configureDeepLinking();
-      
+
       if (!hasNotificationPermission) {
         Alert.alert(
           'Notifications Required',
@@ -45,15 +45,15 @@ export default function RootLayout() {
           [{ text: 'OK' }]
         );
       }
-      
+
       if (!hasBackgroundPermission) {
         Alert.alert(
           'Background Processing',
           'For alarms to work when the app is closed, please allow background app refresh in your device settings.',
           [
             { text: 'OK' },
-            { 
-              text: 'Settings', 
+            {
+              text: 'Settings',
               onPress: () => {
                 // On Android, you might want to guide users to battery optimization settings
                 console.log('Guide user to background app settings');
@@ -62,8 +62,11 @@ export default function RootLayout() {
           ]
         );
       }
+
+      // 2 dakikada bir alarm kontrolü başlat
+      AlarmService.startAlarmChecker();
     };
-    
+
     // Setup notification response listener
     const notificationResponseSubscription = Notifications.addNotificationResponseReceivedListener(
       (response) => {
@@ -72,11 +75,13 @@ export default function RootLayout() {
         NavigationService.handleNotificationNavigation(data);
       }
     );
-    
+
     initializeServices();
-    
+
     return () => {
       notificationResponseSubscription.remove();
+      // Uygulama kapanırken checker'ı durdur
+      AlarmService.stopAlarmChecker();
     };
   }, []);
 

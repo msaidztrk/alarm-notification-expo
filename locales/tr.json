@@ -6,14 +6,19 @@
   "tabs": {
     "alarms": "Alarmlar",
     "add": "Alarm Ekle",
-    "active": "Aktif"
+    "active": "Aktif",
+    "notifications": "Bildirimler",
+    "settings": "Ayarlar"
   },
   "alarms": {
     "title": "Zaman Penceresi Alarmları",
     "subtitle": "{{count}} aktif alarm",
     "empty": "Henüz alarm yok",
     "emptyDescription": "İlk zaman penceresi alarmınızı oluşturmak için + butonuna dokunun",
-    "testNotification": "Test Bildirimi"
+    "testNotification": "Test Bildirimi",
+    "noAlarms": "Henüz alarm yok",
+    "addFirstAlarm": "İlk alarmınızı oluşturmak için + butonuna dokunun",
+    "active": "aktif"
   },
   "addAlarm": {
     "title": "Yeni Zaman Penceresi",
@@ -80,7 +85,15 @@
     "language": "Dil",
     "selectLanguage": "Dil Seç",
     "english": "English",
-    "turkish": "Türkçe"
+    "turkish": "Türkçe",
+    "darkMode": "Karanlık Mod",
+    "general": "Genel",
+    "dangerZone": "Tehlikeli Bölge",
+    "deleteData": "Tüm Verileri Sil",
+    "deleteDataDesc": "Tüm alarmları ve bildirimleri kaldır",
+    "deleteDataConfirm": "Tüm alarmları, bildirimleri ve uygulama verilerini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.",
+    "deleteDataSuccess": "Tüm veriler silindi. Lütfen uygulamayı yeniden başlatın.",
+    "deleteDataError": "Veriler silinemedi. Lütfen tekrar deneyin."
   },
   "common": {
     "ok": "Tamam",

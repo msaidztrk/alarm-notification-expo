@@ -108,7 +108,14 @@ const translations = {
       language: 'Language',
       selectLanguage: 'Select Language',
       darkMode: 'Dark Mode',
-      appearance: 'Appearance'
+      appearance: 'Appearance',
+      general: 'General',
+      dangerZone: 'Danger Zone',
+      deleteData: 'Delete All Data',
+      deleteDataDesc: 'Remove all alarms and notifications',
+      deleteDataConfirm: 'Are you sure you want to delete all alarms, notifications, and app data? This action cannot be undone.',
+      deleteDataSuccess: 'All data has been deleted. Please restart the app.',
+      deleteDataError: 'Failed to delete data. Please try again.'
     }
   },
   tr: {
@@ -216,7 +223,14 @@ const translations = {
       language: 'Dil',
       selectLanguage: 'Dil Seçin',
       darkMode: 'Karanlık Mod',
-      appearance: 'Görünüm'
+      appearance: 'Görünüm',
+      general: 'Genel',
+      dangerZone: 'Tehlikeli Bölge',
+      deleteData: 'Tüm Verileri Sil',
+      deleteDataDesc: 'Tüm alarmları ve bildirimleri kaldır',
+      deleteDataConfirm: 'Tüm alarmları, bildirimleri ve uygulama verilerini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
+      deleteDataSuccess: 'Tüm veriler silindi. Lütfen uygulamayı yeniden başlatın.',
+      deleteDataError: 'Veriler silinemedi. Lütfen tekrar deneyin.'
     }
   }
 };

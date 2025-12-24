@@ -6,11 +6,11 @@ import { Alarm } from '@/types/alarm';
 export class NotificationService {
   static async initialize(): Promise<boolean> {
     if (Platform.OS === 'web') {
-      return true; // Skip notification setup for web
+      return true;
     }
 
     let finalStatus = await Notifications.getPermissionsAsync();
-    
+
     if (finalStatus.status !== 'granted') {
       finalStatus = await Notifications.requestPermissionsAsync();
     }
@@ -30,13 +30,11 @@ export class NotificationService {
         enableLights: true,
         enableVibrate: true,
         showBadge: true,
-        // Make notifications persistent and non-dismissible
         bypassDnd: true,
         lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
       });
     }
 
-    // Configure notification handler
     Notifications.setNotificationHandler({
       handleNotification: async () => ({
         shouldShowAlert: true,
@@ -47,7 +45,6 @@ export class NotificationService {
       }),
     });
 
-    // Set up notification categories for actions
     if (Platform.OS === 'ios') {
       await Notifications.setNotificationCategoryAsync('ALARM_CATEGORY', [
         {
@@ -71,45 +68,40 @@ export class NotificationService {
 
     try {
       console.log(`Scheduling notification for alarm: ${alarm.name}, ID: ${alarm.id}`);
-      
-      // First, cancel any existing notifications for this alarm
+
       await this.cancelNotificationsForAlarm(alarm.id);
-      
+
       const notificationRequest: any = {
         content: {
           title: `🔔 ${alarm.name}`,
           body: `Active until ${alarm.endTime}. Mark as done in the app to dismiss.`,
-          data: { 
-            alarmId: alarm.id, 
+          data: {
+            alarmId: alarm.id,
             notificationId,
             type: 'time_window_alarm',
             action: 'open_active_tab'
           },
           badge: 1,
           sound: alarm.soundEnabled ? 'default' : null,
-          // Make notification persistent and non-dismissible
           sticky: true,
           autoDismiss: false,
         },
-        trigger: null, // Show immediately
-        identifier: `alarm_${alarm.id}`, // Use consistent identifier based on alarm ID
+        trigger: null,
+        identifier: `alarm_${alarm.id}`,
       };
 
-      // Add platform-specific properties
       if (Platform.OS === 'ios') {
         notificationRequest.content.categoryIdentifier = 'ALARM_CATEGORY';
-        // iOS specific persistent settings
         notificationRequest.content.interruptionLevel = 'timeSensitive';
       } else if (Platform.OS === 'android') {
         notificationRequest.content.channelId = 'alarm';
-        // Android specific persistent settings - make it truly non-dismissible
         notificationRequest.content.priority = 'max';
-        notificationRequest.content.ongoing = true; // Makes notification persistent like a foreground service
-        notificationRequest.content.autoCancel = false; // Prevents auto-cancellation when tapped
-        notificationRequest.content.dismissable = false; // Prevents manual dismissal
-        notificationRequest.content.localOnly = true; // Keeps it local to device
-        notificationRequest.content.timeoutAfter = null; // Never timeout
-        notificationRequest.content.visibility = 'public'; // Always visible
+        notificationRequest.content.ongoing = true;
+        notificationRequest.content.autoCancel = false;
+        notificationRequest.content.dismissable = false;
+        notificationRequest.content.localOnly = true;
+        notificationRequest.content.timeoutAfter = null;
+        notificationRequest.content.visibility = 'public';
       }
 
       const identifier = await Notifications.scheduleNotificationAsync(notificationRequest);
@@ -122,124 +114,72 @@ export class NotificationService {
     }
   }
 
+  /**
+   * DİNAMİK BİLDİRİM SİSTEMİ
+   * Sadece bugün ve yarın için bildirim oluşturur.
+   * Her gün background task ile yeni günün bildirimleri eklenir.
+   */
   static async scheduleRepeatingAlarmNotifications(alarm: Alarm): Promise<string[]> {
     if (Platform.OS === 'web') {
       return [];
     }
 
     try {
-      console.log(`Scheduling repeating notifications for alarm: ${alarm.name} with ${alarm.notificationInterval} minute intervals`);
-      
       const identifiers: string[] = [];
-      const today = new Date();
-      
-      // Get time windows (use new array or fall back to single window for backward compatibility)
-      const timeWindows = alarm.timeWindows && alarm.timeWindows.length > 0 
-        ? alarm.timeWindows 
+      const now = new Date();
+
+      // Sadece BUGÜN ve YARIN için bildirim oluştur (2 gün)
+      const DAYS_TO_SCHEDULE = 2;
+
+      const timeWindows = alarm.timeWindows && alarm.timeWindows.length > 0
+        ? alarm.timeWindows
         : alarm.startTime && alarm.endTime
           ? [{ id: 'default', startTime: alarm.startTime, endTime: alarm.endTime }]
           : [];
-      
-      // If no time windows, return empty array
+
       if (timeWindows.length === 0) {
         console.warn(`No time windows found for alarm: ${alarm.name}`);
         return [];
       }
-      
-      // Schedule notifications for each time window for the next 7 days
-      for (let i = 0; i < 7; i++) {
-        const targetDate = new Date(today);
-        targetDate.setDate(today.getDate() + i);
-        
-        // For weekly alarms, check if this day is selected
+
+      console.log(`[Dynamic] Scheduling notifications for ${alarm.name} - Next ${DAYS_TO_SCHEDULE} days only`);
+
+      for (let dayOffset = 0; dayOffset < DAYS_TO_SCHEDULE; dayOffset++) {
+        const targetDate = new Date(now);
+        targetDate.setDate(now.getDate() + dayOffset);
+        targetDate.setHours(0, 0, 0, 0);
+
+        // Weekly alarm kontrolü
         if (alarm.repeatType === 'weekly' && alarm.selectedDays) {
-          const dayOfWeek = targetDate.getDay(); // 0 = Sunday, 6 = Saturday
-          
-          // Skip this day if it's not selected
+          const dayOfWeek = targetDate.getDay();
           if (!alarm.selectedDays.includes(dayOfWeek)) {
-            console.log(`Skipping day ${dayOfWeek} for weekly alarm ${alarm.name}`);
             continue;
           }
         }
-        
-        // Process each time window
-        for (let windowIndex = 0; windowIndex < timeWindows.length; windowIndex++) {
-          const window = timeWindows[windowIndex];
-          
-          // Parse start and end time
-          const [startHour, startMinute] = window.startTime.split(':').map(Number);
-          const [endHour, endMinute] = window.endTime.split(':').map(Number);
-          
-          const startTime = new Date(targetDate);
-          startTime.setHours(startHour, startMinute, 0, 0);
-          
-          const endTime = new Date(targetDate);
-          endTime.setHours(endHour, endMinute, 0, 0);
-          
-          // Handle next day end time
-          if (endTime <= startTime) {
-            endTime.setDate(endTime.getDate() + 1);
-          }
-          
-          // Only schedule if start time is in the future
-          if (startTime > new Date()) {
-            // Calculate how many notifications to schedule based on interval
-            const durationMs = endTime.getTime() - startTime.getTime();
-            const intervalMs = alarm.notificationInterval * 60 * 1000; // Convert minutes to milliseconds
-            const notificationCount = Math.floor(durationMs / intervalMs) + 1; // +1 for initial notification
-            
-            // Schedule multiple notifications at intervals
-            for (let j = 0; j < notificationCount; j++) {
-              const notificationTime = new Date(startTime.getTime() + (j * intervalMs));
-              
-              // Don't schedule notifications after end time
-              if (notificationTime > endTime) {
-                break;
-              }
-              
-              const notificationRequest: any = {
-                content: {
-                  title: `🔔 ${alarm.name}`,
-                  body: `Active until ${window.endTime}. Mark as done in the app to dismiss.`,
-                  data: { 
-                    alarmId: alarm.id, 
-                    notificationId: `${alarm.id}_${i}_${windowIndex}_${j}`,
-                    type: 'time_window_alarm',
-                    action: 'open_active_tab',
-                    windowIndex: windowIndex
-                  },
-                  badge: 1,
-                  sound: alarm.soundEnabled ? 'default' : null,
-                },
-                trigger: {
-                  type: 'date',
-                  date: notificationTime,
-                  repeats: false,
-                },
-                identifier: `alarm_${alarm.id}_day_${i}_window_${windowIndex}_interval_${j}`,
-              };
 
-              // Add platform-specific properties
-              if (Platform.OS === 'ios') {
-                notificationRequest.content.categoryIdentifier = 'ALARM_CATEGORY';
-                notificationRequest.content.interruptionLevel = 'timeSensitive';
-              } else if (Platform.OS === 'android') {
-                notificationRequest.content.channelId = 'alarm';
-                notificationRequest.content.priority = 'max';
-                notificationRequest.content.ongoing = true;
-                notificationRequest.content.autoCancel = false;
-              }
+        // Once/daily_today kontrolü - sadece bugün için
+        if ((alarm.repeatType === 'daily_today' || (alarm as any).repeatType === 'once') && dayOffset > 0) {
+          continue;
+        }
 
-              const identifier = await Notifications.scheduleNotificationAsync(notificationRequest);
-              identifiers.push(identifier);
-              
-              console.log(`Scheduled notification ${j + 1}/${notificationCount} for ${notificationTime.toLocaleString()}`);
-            }
+        for (const window of timeWindows) {
+          const scheduledCount = await this.scheduleWindowNotifications(
+            alarm,
+            targetDate,
+            window,
+            dayOffset
+          );
+
+          if (scheduledCount > 0) {
+            console.log(`[Dynamic] Day ${dayOffset}: Scheduled ${scheduledCount} notifications for window ${window.startTime}-${window.endTime}`);
           }
         }
       }
-      
-      console.log(`Successfully scheduled ${identifiers.length} notifications for alarm: ${alarm.name}`);
+
+      // Toplam zamanlanmış bildirimleri say
+      const scheduled = await this.getScheduledNotificationsForAlarm(alarm.id);
+      console.log(`[Dynamic] Total scheduled notifications for ${alarm.name}: ${scheduled.length}`);
+
       return identifiers;
     } catch (error) {
       console.error('Error scheduling repeating alarm notifications:', error);
@@ -247,23 +187,170 @@ export class NotificationService {
     }
   }
 
+  /**
+   * Belirli bir gün ve zaman penceresi için bildirimleri zamanlar
+   */
+  private static async scheduleWindowNotifications(
+    alarm: Alarm,
+    targetDate: Date,
+    window: { id: string; startTime: string; endTime: string },
+    dayOffset: number
+  ): Promise<number> {
+    const now = new Date();
+    const [startHour, startMinute] = window.startTime.split(':').map(Number);
+    const [endHour, endMinute] = window.endTime.split(':').map(Number);
+
+    const startTime = new Date(targetDate);
+    startTime.setHours(startHour, startMinute, 0, 0);
+
+    const endTime = new Date(targetDate);
+    endTime.setHours(endHour, endMinute, 0, 0);
+
+    // Gece yarısını geçen zaman pencereleri
+    if (endTime <= startTime) {
+      endTime.setDate(endTime.getDate() + 1);
+    }
+
+    // Eğer başlangıç zamanı geçmişse, şu anki zamandan başla
+    let effectiveStartTime = startTime;
+    if (startTime < now && dayOffset === 0) {
+      // Bugün için: Bir sonraki interval zamanını hesapla
+      const intervalMs = alarm.notificationInterval * 60 * 1000;
+      const timeSinceStart = now.getTime() - startTime.getTime();
+      const intervalsElapsed = Math.ceil(timeSinceStart / intervalMs);
+      effectiveStartTime = new Date(startTime.getTime() + (intervalsElapsed * intervalMs));
+    }
+
+    // Eğer effective start time end time'dan sonraysa, bildirim zamanlamayı atla
+    if (effectiveStartTime >= endTime) {
+      return 0;
+    }
+
+    // Bildirim sayısını hesapla
+    const durationMs = endTime.getTime() - effectiveStartTime.getTime();
+    const intervalMs = alarm.notificationInterval * 60 * 1000;
+    const notificationCount = Math.floor(durationMs / intervalMs) + 1;
+
+    let scheduledCount = 0;
+
+    for (let i = 0; i < notificationCount; i++) {
+      const notificationTime = new Date(effectiveStartTime.getTime() + (i * intervalMs));
+
+      if (notificationTime > endTime || notificationTime < now) {
+        continue;
+      }
+
+      const identifier = `alarm_${alarm.id}_${targetDate.toISOString().split('T')[0]}_${window.id}_${i}`;
+
+      const notificationRequest: any = {
+        content: {
+          title: `🔔 ${alarm.name}`,
+          body: `Active until ${window.endTime}. Mark as done in the app to dismiss.`,
+          data: {
+            alarmId: alarm.id,
+            notificationId: identifier,
+            type: 'time_window_alarm',
+            action: 'open_active_tab',
+            windowId: window.id
+          },
+          badge: 1,
+          sound: alarm.soundEnabled ? 'default' : null,
+        },
+        trigger: {
+          type: 'date',
+          date: notificationTime,
+        },
+        identifier,
+      };
+
+      if (Platform.OS === 'ios') {
+        notificationRequest.content.categoryIdentifier = 'ALARM_CATEGORY';
+        notificationRequest.content.interruptionLevel = 'timeSensitive';
+      } else if (Platform.OS === 'android') {
+        notificationRequest.content.channelId = 'alarm';
+        notificationRequest.content.priority = 'max';
+      }
+
+      try {
+        await Notifications.scheduleNotificationAsync(notificationRequest);
+        scheduledCount++;
+      } catch (error) {
+        console.error(`Error scheduling notification at ${notificationTime}:`, error);
+      }
+    }
+
+    return scheduledCount;
+  }
+
+  /**
+   * Belirli bir alarm için zamanlanmış bildirimleri getirir
+   */
+  static async getScheduledNotificationsForAlarm(alarmId: string): Promise<Notifications.NotificationRequest[]> {
+    if (Platform.OS === 'web') {
+      return [];
+    }
+
+    try {
+      const allScheduled = await Notifications.getAllScheduledNotificationsAsync();
+      return allScheduled.filter(n => n.identifier.includes(alarmId));
+    } catch (error) {
+      console.error('Error getting scheduled notifications for alarm:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Ertesi gün için bildirimleri yeniler (Background Task tarafından çağrılır)
+   */
+  static async refreshNotificationsForNextDay(alarms: Alarm[]): Promise<void> {
+    console.log('[Dynamic] Refreshing notifications for next day...');
+
+    for (const alarm of alarms) {
+      if (!alarm.isActive) continue;
+
+      // Eski bildirimleri temizle (geçmiş günler)
+      await this.cleanupExpiredNotifications(alarm.id);
+
+      // Yeni günün bildirimlerini ekle
+      await this.scheduleRepeatingAlarmNotifications(alarm);
+    }
+
+    console.log('[Dynamic] Notification refresh complete');
+  }
+
+  /**
+   * Geçmiş günlere ait bildirimleri temizler
+   */
+  private static async cleanupExpiredNotifications(alarmId: string): Promise<void> {
+    try {
+      const scheduled = await this.getScheduledNotificationsForAlarm(alarmId);
+      const now = new Date();
+
+      for (const notification of scheduled) {
+        const trigger = notification.trigger as any;
+        if (trigger?.date) {
+          const triggerDate = new Date(trigger.date);
+          if (triggerDate < now) {
+            await Notifications.cancelScheduledNotificationAsync(notification.identifier);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error cleaning up expired notifications:', error);
+    }
+  }
+
   static async cancelNotificationsForAlarm(alarmId: string): Promise<void> {
     if (Platform.OS !== 'web') {
       try {
-        // Attempt targeted cancellation for the canonical identifier
         const canonical = `alarm_${alarmId}`;
         try {
           await Notifications.cancelScheduledNotificationAsync(canonical);
-        } catch (e) {
-          // ignore - we'll attempt broader cancellation below
-        }
+        } catch (e) { }
         try {
           await Notifications.dismissNotificationAsync(canonical);
-        } catch (e) {
-          // ignore
-        }
+        } catch (e) { }
 
-        // Cancel any scheduled notifications whose identifier contains the alarmId
         const scheduled = await Notifications.getAllScheduledNotificationsAsync();
         for (const req of scheduled) {
           const id = (req as any).identifier || (req as any).id || '';
@@ -276,7 +363,6 @@ export class NotificationService {
           }
         }
 
-        // Dismiss any presented (delivered) notifications that belong to this alarm
         const presented = await Notifications.getPresentedNotificationsAsync();
         for (const p of presented) {
           const pid = p.request.identifier;
@@ -297,19 +383,13 @@ export class NotificationService {
   static async cancelNotification(identifier: string): Promise<void> {
     if (Platform.OS !== 'web' && identifier) {
       try {
-        // Try direct cancellation first
         try {
           await Notifications.cancelScheduledNotificationAsync(identifier);
-        } catch (e) {
-          // ignore and try fallback
-        }
+        } catch (e) { }
         try {
           await Notifications.dismissNotificationAsync(identifier);
-        } catch (e) {
-          // ignore and try fallback
-        }
+        } catch (e) { }
 
-        // Fallback: if the exact identifier didn't match, try cancelling any scheduled requests that include this identifier
         const scheduled = await Notifications.getAllScheduledNotificationsAsync();
         for (const req of scheduled) {
           const id = (req as any).identifier || (req as any).id || '';
@@ -373,8 +453,7 @@ export class NotificationService {
   ): Promise<void> {
     if (Platform.OS !== 'web') {
       Notifications.addNotificationResponseReceivedListener(onNotificationResponse);
-      
-      // Add notification dismissed listener to recreate dismissed alarm notifications
+
       Notifications.addNotificationReceivedListener(async (notification) => {
         const data = notification.request.content.data as any;
         if (data?.type === 'time_window_alarm') {
@@ -386,12 +465,10 @@ export class NotificationService {
 
   static async recreateNotificationIfDismissed(alarm: Alarm, notificationId: string): Promise<void> {
     if (Platform.OS !== 'web') {
-      // Don't recreate notifications for inactive alarms
       if (!alarm.isActive) {
         return;
       }
 
-      // Check if the main persistent notification still exists
       const presentedNotifications = await Notifications.getPresentedNotificationsAsync();
       const expectedId = `alarm_${alarm.id}`;
       const exists = presentedNotifications.some(n => n.request.identifier === expectedId || n.request.identifier.includes(alarm.id));

@@ -14,15 +14,15 @@ const CACHE_TTL = 5000; // 5 seconds cache
 export class AlarmService {
   static async initializeCleanState(): Promise<void> {
     console.log('Initializing alarm service...');
-    
+
     // Migration happens automatically in getAlarms() now - no need to call separately
-    
+
     // Just load alarms to trigger any needed migration
     await this.getAlarms();
-    
+
     // Lightweight cleanup - only expire out-of-window notifications
     await this.cleanupOutOfWindowNotifications();
-    
+
     console.log('Alarm service initialized');
   }
 
@@ -31,7 +31,7 @@ export class AlarmService {
       const currentTime = this.getCurrentTime();
       const activeNotifications = await this.getActiveNotifications();
       const alarms = await this.getAlarms();
-      
+
       for (const notification of activeNotifications) {
         const alarm = alarms.find(a => a.id === notification.alarmId);
         if (alarm && !this.isAlarmInAnyTimeWindow(alarm, currentTime)) {
@@ -48,13 +48,13 @@ export class AlarmService {
     try {
       console.log('Rescheduling all active alarms...');
       const alarms = await this.getAlarms();
-      
+
       for (const alarm of alarms) {
         if (alarm.isActive && !this.isAlarmCompletedToday(alarm)) {
           await this.scheduleAlarmNotifications(alarm);
         }
       }
-      
+
       console.log(`Rescheduled ${alarms.filter(a => a.isActive).length} active alarms`);
     } catch (error) {
       console.error('Error rescheduling alarms:', error);
@@ -68,41 +68,41 @@ export class AlarmService {
       if (alarmsCache && (now - alarmsCacheTimestamp) < CACHE_TTL) {
         return alarmsCache;
       }
-      
+
       const data = await AsyncStorage.getItem(ALARMS_STORAGE_KEY);
       const alarms = data ? JSON.parse(data) : [];
-      
+
       // Auto-migrate old alarms on read (lightweight - only in memory)
       let needsSave = false;
       const migratedAlarms = alarms.map((alarm: Alarm) => {
         let migratedAlarm = { ...alarm };
-        
+
         // If alarm doesn't have timeWindows but has startTime and endTime, auto-migrate it
         if ((!alarm.timeWindows || alarm.timeWindows.length === 0) && alarm.startTime && alarm.endTime) {
           needsSave = true;
           migratedAlarm.timeWindows = [{ id: 'default', startTime: alarm.startTime, endTime: alarm.endTime }];
         }
-        
+
         // Add soundEnabled if missing
         if (migratedAlarm.soundEnabled === undefined) {
           needsSave = true;
           migratedAlarm.soundEnabled = true;
         }
-        
+
         return migratedAlarm;
       });
-      
+
       // Save migrated alarms asynchronously in background (don't wait)
       if (needsSave) {
-        this.saveAlarms(migratedAlarms).catch(err => 
+        this.saveAlarms(migratedAlarms).catch(err =>
           console.error('Error saving migrated alarms:', err)
         );
       }
-      
+
       // Update cache
       alarmsCache = migratedAlarms;
       alarmsCacheTimestamp = now;
-      
+
       return migratedAlarms;
     } catch (error) {
       console.error('Error getting alarms:', error);
@@ -131,12 +131,12 @@ export class AlarmService {
     const alarms = await this.getAlarms();
     alarms.push(newAlarm);
     await this.saveAlarms(alarms);
-    
+
     // Schedule future notifications for this alarm
     if (newAlarm.isActive) {
       await this.scheduleAlarmNotifications(newAlarm);
     }
-    
+
     return newAlarm;
   }
 
@@ -147,7 +147,7 @@ export class AlarmService {
       const oldAlarm = alarms[index];
       alarms[index] = { ...alarms[index], ...updates };
       await this.saveAlarms(alarms);
-      
+
       // Update scheduled notifications if alarm status or times changed
       if (updates.isActive !== undefined || updates.startTime || updates.endTime) {
         await this.cancelScheduledNotifications(id);
@@ -215,11 +215,11 @@ export class AlarmService {
     // Cancel any notifications for this alarm first
     await NotificationService.cancelNotificationsForAlarm(id);
     await this.cancelScheduledNotifications(id);
-    
+
     const alarms = await this.getAlarms();
     const filtered = alarms.filter(alarm => alarm.id !== id);
     await this.saveAlarms(filtered);
-    
+
     // Also clean up any related notifications
     const notifications = await this.getAllNotifications();
     const filteredNotifications = notifications.filter(n => n.alarmId !== id);
@@ -230,13 +230,13 @@ export class AlarmService {
     try {
       const data = await AsyncStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
       const notifications: AlarmNotification[] = data ? JSON.parse(data) : [];
-      
+
       // Filter out expired notifications
       const now = Date.now();
-      const active = notifications.filter(notification => 
+      const active = notifications.filter(notification =>
         notification.isActive && !notification.completedAt && !notification.expiredAt
       );
-      
+
       return active;
     } catch (error) {
       console.error('Error getting notifications:', error);
@@ -264,10 +264,10 @@ export class AlarmService {
 
     // First check if there's already an active notification for this alarm
     const existingNotifications = await this.getActiveNotifications();
-    const existingNotification = existingNotifications.find(n => 
+    const existingNotification = existingNotifications.find(n =>
       n.alarmId === alarm.id && n.isActive
     );
-    
+
     if (existingNotification) {
       // Return existing notification instead of creating a duplicate
       return existingNotification;
@@ -292,7 +292,7 @@ export class AlarmService {
     if (systemNotificationId) {
       notification.lastNotificationId = systemNotificationId;
       // Update the notification with the system ID
-      const updatedNotifications = notifications.map(n => 
+      const updatedNotifications = notifications.map(n =>
         n.id === notification.id ? notification : n
       );
       await this.saveNotifications(updatedNotifications);
@@ -306,10 +306,10 @@ export class AlarmService {
     const index = notifications.findIndex(n => n.id === notificationId);
     if (index !== -1) {
       const notification = notifications[index];
-      
+
       // Cancel system notification using alarm-based identifier
       await NotificationService.cancelNotificationsForAlarm(notification.alarmId);
-      
+
       notifications[index] = {
         ...notification,
         isActive: false,
@@ -317,11 +317,11 @@ export class AlarmService {
         completedForToday: true,
       };
       await this.saveNotifications(notifications);
-      
+
       // Get the alarm to check its repeat type
       const alarms = await this.getAlarms();
       const alarm = alarms.find(a => a.id === notification.alarmId);
-      
+
       if (alarm?.repeatType === 'daily_today') {
         // If it's a daily_today alarm, delete it completely
         await this.deleteAlarm(notification.alarmId);
@@ -348,7 +348,7 @@ export class AlarmService {
 
   static isAlarmCompletedToday(alarm: Alarm): boolean {
     if (!alarm.completedToday || !alarm.lastCompletedDate) return false;
-    
+
     const today = new Date().toISOString().split('T')[0];
     return alarm.lastCompletedDate === today;
   }
@@ -356,12 +356,12 @@ export class AlarmService {
   static async resetDailyCompletions(): Promise<void> {
     const alarms = await this.getAlarms();
     const today = new Date().toISOString().split('T')[0];
-    
+
     const updatedAlarms = alarms.map(alarm => ({
       ...alarm,
       completedToday: alarm.lastCompletedDate === today ? alarm.completedToday : false,
     }));
-    
+
     await this.saveAlarms(updatedAlarms);
   }
 
@@ -370,10 +370,10 @@ export class AlarmService {
     const index = notifications.findIndex(n => n.id === notificationId);
     if (index !== -1) {
       const notification = notifications[index];
-      
+
       // Cancel system notification using alarm-based identifier
       await NotificationService.cancelNotificationsForAlarm(notification.alarmId);
-      
+
       notifications[index] = {
         ...notification,
         isActive: false,
@@ -422,33 +422,33 @@ export class AlarmService {
     if (!alarm) {
       return false;
     }
-    
+
     // For weekly alarms, check if today is a selected day
     if (alarm.repeatType === 'weekly' && alarm.selectedDays) {
       const today = new Date();
       const currentDayOfWeek = today.getDay(); // 0 = Sunday, 6 = Saturday
-      
+
       // If today is not in the selected days, return false
       if (!alarm.selectedDays.includes(currentDayOfWeek)) {
         console.log(`Alarm ${alarm.name} is not active today (day ${currentDayOfWeek})`);
         return false;
       }
     }
-    
+
     // Support multiple time windows or fall back to single window for backward compatibility
-    const timeWindows = alarm.timeWindows && alarm.timeWindows.length > 0 
-      ? alarm.timeWindows 
-      : alarm.startTime && alarm.endTime 
+    const timeWindows = alarm.timeWindows && alarm.timeWindows.length > 0
+      ? alarm.timeWindows
+      : alarm.startTime && alarm.endTime
         ? [{ id: 'default', startTime: alarm.startTime, endTime: alarm.endTime }]
         : [];
-    
+
     // If no time windows, return false
     if (timeWindows.length === 0) {
       return false;
     }
-    
+
     // Check if current time is in any of the time windows
-    return timeWindows.some(window => 
+    return timeWindows.some(window =>
       this.isTimeInWindow(currentTime, window.startTime, window.endTime)
     );
   }
@@ -465,18 +465,18 @@ export class AlarmService {
     try {
       const alarms = await this.getAlarms();
       const today = new Date().toDateString();
-      
+
       // Bugünlük alarmları filtrele
       const todayOnlyAlarms = alarms.filter(alarm => alarm.repeatType === 'daily_today');
-      
+
       for (const alarm of todayOnlyAlarms) {
         const alarmDate = new Date(alarm.createdAt || alarm.id).toDateString();
-        
+
         // Eğer alarm bugünden farklı bir günde oluşturulmuşsa sil
         if (alarmDate !== today) {
           console.log(`Cleaning up daily_today alarm: ${alarm.id}`);
           await this.deleteAlarm(alarm.id);
-          
+
           // Notification'ı da iptal et
           try {
             await NotificationService.cancelNotification(alarm.id);
@@ -494,25 +494,203 @@ export class AlarmService {
   static async initializeDailyCleanup(): Promise<void> {
     // Uygulama açıldığında bir kez çalıştır
     await this.cleanupDailyTodayAlarms();
-    
+
     // Gece yarısı için zamanlayıcı kur (her gün 00:01'de)
     const now = new Date();
     const tomorrow = new Date(now);
     tomorrow.setDate(now.getDate() + 1);
     tomorrow.setHours(0, 1, 0, 0); // Gece yarısından 1 dakika sonra
-    
+
     const msUntilMidnight = tomorrow.getTime() - now.getTime();
-    
+
     setTimeout(async () => {
       await this.cleanupDailyTodayAlarms();
-      
+
       // Her 24 saatte bir tekrarla
       setInterval(async () => {
         await this.cleanupDailyTodayAlarms();
       }, 24 * 60 * 60 * 1000); // 24 saat
-      
+
     }, msUntilMidnight);
-    
+
     console.log(`Daily cleanup scheduled in ${Math.round(msUntilMidnight / 1000 / 60)} minutes`);
+  }
+
+  // ============================================
+  // 2 DAKİKADA BİR ÇALIŞAN ALARM CHECKER SİSTEMİ
+  // ============================================
+
+  private static checkerIntervalId: ReturnType<typeof setInterval> | null = null;
+  private static readonly CHECKER_INTERVAL = 2 * 60 * 1000; // 2 dakika
+
+  /**
+   * Alarm checker'ı başlatır - 2 dakikada bir çalışır
+   * Ana thread'i kastırmaz çünkü async/await kullanır
+   */
+  static startAlarmChecker(): void {
+    // Eğer zaten çalışıyorsa tekrar başlatma
+    if (this.checkerIntervalId) {
+      console.log('[AlarmChecker] Already running');
+      return;
+    }
+
+    console.log('[AlarmChecker] Starting - will check every 2 minutes');
+
+    // İlk kontrolü hemen yap
+    this.runAlarmCheck();
+
+    // Her 2 dakikada bir kontrol et
+    this.checkerIntervalId = setInterval(() => {
+      this.runAlarmCheck();
+    }, this.CHECKER_INTERVAL);
+  }
+
+  /**
+   * Alarm checker'ı durdurur
+   */
+  static stopAlarmChecker(): void {
+    if (this.checkerIntervalId) {
+      clearInterval(this.checkerIntervalId);
+      this.checkerIntervalId = null;
+      console.log('[AlarmChecker] Stopped');
+    }
+  }
+
+  /**
+   * Ana kontrol fonksiyonu - async olduğu için ana thread'i bloklamaz
+   */
+  private static async runAlarmCheck(): Promise<void> {
+    try {
+      console.log('[AlarmChecker] Running check...');
+      const startTime = Date.now();
+
+      // 1. Geçmiş/süresi dolmuş alarmları temizle
+      await this.cleanupExpiredAlarms();
+
+      // 2. Geçmiş bildirimleri temizle
+      await this.cleanupExpiredNotificationsFromStorage();
+
+      // 3. Aktif alarmları kontrol et
+      await this.checkActiveAlarms();
+
+      const duration = Date.now() - startTime;
+      console.log(`[AlarmChecker] Check completed in ${duration}ms`);
+    } catch (error) {
+      console.error('[AlarmChecker] Error during check:', error);
+    }
+  }
+
+  /**
+   * Geçmiş/süresi dolmuş alarmları storage'dan siler
+   * - daily_today alarmları: Oluşturulduğu gün geçtiyse sil
+   * - Tamamlanmış one-time alarmlar: Sil
+   */
+  private static async cleanupExpiredAlarms(): Promise<void> {
+    try {
+      const alarms = await this.getAlarms();
+      const now = new Date();
+      const today = now.toDateString();
+      let deletedCount = 0;
+
+      for (const alarm of alarms) {
+        let shouldDelete = false;
+
+        // 1. daily_today (tek seferlik) alarmlar
+        if (alarm.repeatType === 'daily_today' || (alarm as any).repeatType === 'once') {
+          const alarmCreatedDate = new Date(alarm.createdAt).toDateString();
+
+          // Alarm bugün oluşturulmadıysa sil
+          if (alarmCreatedDate !== today) {
+            shouldDelete = true;
+            console.log(`[AlarmChecker] Deleting expired daily_today alarm: ${alarm.name}`);
+          }
+        }
+
+        // 2. Tamamlanmış ve süresi dolmuş alarmlar
+        if (alarm.completedToday && alarm.lastCompletedDate) {
+          const completedDate = new Date(alarm.lastCompletedDate).toDateString();
+          const daysSinceCompleted = Math.floor(
+            (now.getTime() - new Date(alarm.lastCompletedDate).getTime()) / (1000 * 60 * 60 * 24)
+          );
+
+          // 7 günden eski tamamlanmış one-time alarmları sil
+          if ((alarm.repeatType === 'daily_today' || (alarm as any).repeatType === 'once') && daysSinceCompleted > 0) {
+            shouldDelete = true;
+            console.log(`[AlarmChecker] Deleting old completed alarm: ${alarm.name}`);
+          }
+        }
+
+        if (shouldDelete) {
+          await this.deleteAlarm(alarm.id);
+          deletedCount++;
+        }
+      }
+
+      if (deletedCount > 0) {
+        console.log(`[AlarmChecker] Cleaned up ${deletedCount} expired alarms`);
+      }
+    } catch (error) {
+      console.error('[AlarmChecker] Error cleaning up expired alarms:', error);
+    }
+  }
+
+  /**
+   * Storage'daki geçmiş bildirimleri temizler (7 günden eski)
+   */
+  private static async cleanupExpiredNotificationsFromStorage(): Promise<void> {
+    try {
+      const notifications = await this.getAllNotifications();
+      const now = Date.now();
+      const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
+
+      const activeNotifications = notifications.filter(n => {
+        // 7 günden eski bildirimleri filtrele
+        if (n.createdAt < sevenDaysAgo) {
+          return false;
+        }
+        return true;
+      });
+
+      if (activeNotifications.length < notifications.length) {
+        const removedCount = notifications.length - activeNotifications.length;
+        await this.saveNotifications(activeNotifications);
+        console.log(`[AlarmChecker] Removed ${removedCount} old notifications from storage`);
+      }
+    } catch (error) {
+      console.error('[AlarmChecker] Error cleaning up notifications:', error);
+    }
+  }
+
+  /**
+   * Aktif alarmları kontrol eder ve gerekirse bildirim oluşturur/sonlandırır
+   */
+  private static async checkActiveAlarms(): Promise<void> {
+    try {
+      const currentTime = this.getCurrentTime();
+      const alarms = await this.getAlarms();
+      const activeNotifications = await this.getActiveNotifications();
+
+      for (const alarm of alarms) {
+        if (!alarm.isActive) continue;
+        if (this.isAlarmCompletedToday(alarm)) continue;
+
+        const isInWindow = this.isAlarmInAnyTimeWindow(alarm, currentTime);
+        const existingNotification = activeNotifications.find(n =>
+          n.alarmId === alarm.id && n.isActive
+        );
+
+        if (isInWindow && !existingNotification) {
+          // Zaman penceresindeyiz ama bildirim yok - oluştur
+          console.log(`[AlarmChecker] Creating notification for: ${alarm.name}`);
+          await this.createNotification(alarm);
+        } else if (!isInWindow && existingNotification) {
+          // Zaman penceresi dışındayız ama bildirim var - sonlandır
+          console.log(`[AlarmChecker] Expiring notification for: ${alarm.name}`);
+          await this.expireNotification(existingNotification.id);
+        }
+      }
+    } catch (error) {
+      console.error('[AlarmChecker] Error checking active alarms:', error);
+    }
   }
 }

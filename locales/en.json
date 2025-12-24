@@ -6,14 +6,19 @@
   "tabs": {
     "alarms": "Alarms",
     "add": "Add Alarm",
-    "active": "Active"
+    "active": "Active",
+    "notifications": "Notifications",
+    "settings": "Settings"
   },
   "alarms": {
     "title": "Time Window Alarms",
     "subtitle": "{{count}} active alarms",
     "empty": "No alarms yet",
     "emptyDescription": "Tap the + button to create your first time window alarm",
-    "testNotification": "Test Notification"
+    "testNotification": "Test Notification",
+    "noAlarms": "No alarms yet",
+    "addFirstAlarm": "Tap + to create your first alarm",
+    "active": "active"
   },
   "addAlarm": {
     "title": "New Time Window",
@@ -80,7 +85,15 @@
     "language": "Language",
     "selectLanguage": "Select Language",
     "english": "English",
-    "turkish": "Türkçe"
+    "turkish": "Türkçe",
+    "darkMode": "Dark Mode",
+    "general": "General",
+    "dangerZone": "Danger Zone",
+    "deleteData": "Delete All Data",
+    "deleteDataDesc": "Remove all alarms and notifications",
+    "deleteDataConfirm": "Are you sure you want to delete all alarms, notifications, and app data? This action cannot be undone.",
+    "deleteDataSuccess": "All data has been deleted. Please restart the app.",
+    "deleteDataError": "Failed to delete data. Please try again."
   },
   "common": {
     "ok": "OK",
