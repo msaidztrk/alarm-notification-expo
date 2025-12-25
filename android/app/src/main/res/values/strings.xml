@@ -1,4 +1,5 @@
 <resources>
   <string name="app_name">Time Window Alarms</string>
+  <string name="expo_navigation_bar_legacy_visible" translatable="false">sticky-immersive</string>
   <string name="expo_system_ui_user_interface_style" translatable="false">automatic</string>
 </resources>
