@@ -38,7 +38,6 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <category android:name="android.intent.category.BROWSABLE"/>
         <data android:scheme="timewindowalarms"/>
-        <data android:scheme="exp+time-window-alarms"/>
       </intent-filter>
     </activity>
   </application>

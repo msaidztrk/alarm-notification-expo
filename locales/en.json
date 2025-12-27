@@ -105,5 +105,16 @@
     "done": "Done",
     "error": "Error",
     "success": "Success"
+  },
+  "onboarding": {
+    "slide1Title": "Welcome",
+    "slide1Description": "Your smart alarm companion for daily routines. Never miss an important task again!",
+    "slide2Title": "Time Window Alarms",
+    "slide2Description": "Set alarms that remind you within your preferred time windows. Perfect for flexible schedules.",
+    "slide3Title": "Get Started",
+    "slide3Description": "Create your first alarm and stay on track with your goals!",
+    "next": "Next",
+    "getStarted": "Get Started",
+    "skip": "Skip"
   }
 }

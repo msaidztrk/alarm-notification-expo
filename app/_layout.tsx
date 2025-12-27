@@ -1,8 +1,9 @@
-import { useEffect } from 'react';
-import { Stack } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Platform } from 'react-native';
+import { Platform, View, ActivityIndicator, StyleSheet } from 'react-native';
 import * as NavigationBar from 'expo-navigation-bar';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { NotificationService } from '@/services/NotificationService';
 import { BackgroundTaskService } from '@/services/backgroundTaskService';
@@ -11,12 +12,38 @@ import { NavigationService } from '@/services/navigationService';
 import { Alert } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { LanguageProvider } from '@/services/LanguageProvider';
-import { ThemeProvider } from '@/services/ThemeProvider';
+import { ThemeProvider, useTheme } from '@/services/ThemeProvider';
 
-export default function RootLayout() {
+const ONBOARDING_KEY = '@onboarding_completed';
+
+function RootLayoutContent() {
+  const { theme } = useTheme();
+  const [isLoading, setIsLoading] = useState(true);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
   useFrameworkReady();
 
   useEffect(() => {
+    const checkOnboardingAndInitialize = async () => {
+      try {
+        // Check if onboarding is completed
+        const onboardingCompleted = await AsyncStorage.getItem(ONBOARDING_KEY);
+
+        if (onboardingCompleted !== 'true') {
+          setShowOnboarding(true);
+          setIsLoading(false);
+          return;
+        }
+
+        // Initialize services only if onboarding is complete
+        await initializeServices();
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error checking onboarding status:', error);
+        setIsLoading(false);
+      }
+    };
+
     const initializeServices = async () => {
       console.log('Initializing notifications and background tasks...');
 
@@ -89,7 +116,7 @@ export default function RootLayout() {
       }
     );
 
-    initializeServices();
+    checkOnboardingAndInitialize();
 
     return () => {
       notificationResponseSubscription.remove();
@@ -98,14 +125,47 @@ export default function RootLayout() {
     };
   }, []);
 
+  // Redirect based on onboarding status
+  useEffect(() => {
+    if (!isLoading && showOnboarding) {
+      router.replace('/onboarding');
+    }
+  }, [isLoading, showOnboarding]);
+
+  if (isLoading) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color="#6366F1" />
+      </View>
+    );
+  }
+
+  return (
+    <>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="onboarding" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="+not-found" />
+      </Stack>
+      <StatusBar style="light" hidden={false} translucent backgroundColor="transparent" />
+    </>
+  );
+}
+
+export default function RootLayout() {
   return (
     <ThemeProvider>
       <LanguageProvider>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="+not-found" />
-        </Stack>
-        <StatusBar style="light" hidden={false} translucent backgroundColor="transparent" />
+        <RootLayoutContent />
       </LanguageProvider>
     </ThemeProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});

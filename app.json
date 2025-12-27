@@ -30,12 +30,12 @@
     },
     "androidStatusBar": {
       "barStyle": "light-content",
-      "backgroundColor": "transparent",
+      "backgroundColor": "#00000000",
       "translucent": true
     },
     "androidNavigationBar": {
       "visible": "sticky-immersive",
-      "backgroundColor": "transparent"
+      "backgroundColor": "#00000000"
     },
     "web": {
       "bundler": "metro",

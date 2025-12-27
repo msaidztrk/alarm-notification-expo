@@ -105,5 +105,16 @@
     "done": "Tamam",
     "error": "Hata",
     "success": "Başarılı"
+  },
+  "onboarding": {
+    "slide1Title": "Hoş Geldiniz",
+    "slide1Description": "Günlük rutinleriniz için akıllı alarm asistanınız. Önemli görevlerinizi bir daha asla kaçırmayın!",
+    "slide2Title": "Zaman Penceresi Alarmları",
+    "slide2Description": "Tercih ettiğiniz zaman pencerelerinde sizi hatırlatan alarmlar oluşturun. Esnek programlar için mükemmel.",
+    "slide3Title": "Başlayın",
+    "slide3Description": "İlk alarmınızı oluşturun ve hedeflerinizde yolunuzdan ayrılmayın!",
+    "next": "İleri",
+    "getStarted": "Başla",
+    "skip": "Atla"
   }
 }

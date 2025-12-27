@@ -118,6 +118,17 @@ const translations = {
       deleteDataConfirm: 'Are you sure you want to delete all alarms, notifications, and app data? This action cannot be undone.',
       deleteDataSuccess: 'All data has been deleted. Please restart the app.',
       deleteDataError: 'Failed to delete data. Please try again.'
+    },
+    onboarding: {
+      slide1Title: 'Welcome',
+      slide1Description: 'Your smart alarm companion for daily routines. Never miss an important task again!',
+      slide2Title: 'Time Window Alarms',
+      slide2Description: 'Set alarms that remind you within your preferred time windows. Perfect for flexible schedules.',
+      slide3Title: 'Get Started',
+      slide3Description: 'Create your first alarm and stay on track with your goals!',
+      next: 'Next',
+      getStarted: 'Get Started',
+      skip: 'Skip'
     }
   },
   tr: {
@@ -235,6 +246,17 @@ const translations = {
       deleteDataConfirm: 'Tüm alarmları, bildirimleri ve uygulama verilerini silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
       deleteDataSuccess: 'Tüm veriler silindi. Lütfen uygulamayı yeniden başlatın.',
       deleteDataError: 'Veriler silinemedi. Lütfen tekrar deneyin.'
+    },
+    onboarding: {
+      slide1Title: 'Hoş Geldiniz',
+      slide1Description: 'Günlük rutinleriniz için akıllı alarm asistanınız. Önemli görevlerinizi bir daha asla kaçırmayın!',
+      slide2Title: 'Zaman Penceresi Alarmları',
+      slide2Description: 'Tercih ettiğiniz zaman pencerelerinde sizi hatırlatan alarmlar oluşturun. Esnek programlar için mükemmel.',
+      slide3Title: 'Başlayın',
+      slide3Description: 'İlk alarmınızı oluşturun ve hedeflerinizde yolunuzdan ayrılmayın!',
+      next: 'İleri',
+      getStarted: 'Başla',
+      skip: 'Atla'
     }
   }
 };
